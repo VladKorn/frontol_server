@@ -130,7 +130,6 @@ var readFile = function (name) {
     });
 };
 var sendToSite = function (data) {
-    saveToFile("data", data);
     console.log("sendToSite");
     fetch("http://magday.ru/frontol/order.php", {
         method: "post",
@@ -183,7 +182,6 @@ var eventListener = function () { return __awaiter(_this, void 0, void 0, functi
                                 return [4, checkOrdersUpdates()];
                             case 1:
                                 changed_orders = _a.sent();
-                                saveToFile("changed_orders", changed_orders);
                                 if (changed_orders) {
                                     sendToSite(changed_orders);
                                 }
