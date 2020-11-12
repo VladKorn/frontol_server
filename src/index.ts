@@ -38,7 +38,7 @@ const DbRequest = async (query: string) => {
 };
 
 const addColl = () => {
-	DbRequest(`ALTER TABLE DOCUMENT ADD last_order_update_test VARCHAR(25)`);
+	DbRequest(`ALTER TABLE DOCUMENT ADD last_order_update VARCHAR(25)`);
 	// DbRequest(`ALTER TABLE DOCUMENT DROP LAST_UP`)
 };
 
@@ -51,7 +51,7 @@ const addColl = () => {
 
 const getOrdersFromDate = async (date: string) => {
 	const orders = await DbRequest(
-		`SELECT first 5* FROM DOCUMENT WHERE last_order_update_test > '${date}' ORDER BY last_order_update_test desc`
+		`SELECT first 5* FROM DOCUMENT WHERE last_order_update > '${date}' ORDER BY last_order_update desc`
 	);
 	return orders;
 	// fs.writeFile(
@@ -68,7 +68,7 @@ const createTrigger = async () => {
     before insert or update
 as
   begin
-    new.last_order_update_test = CURRENT_TIMESTAMP;
+    new.last_order_update = CURRENT_TIMESTAMP;
   end`).catch((err) => {
 		console.log("createTriger_err", err);
 	});
@@ -149,7 +149,7 @@ const eventListener = async () => {
 			tables.RootObject
 		>;
 		if (orders.length > 0) {
-			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE_TEST;
+			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
 			saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
 			for (let i = 0; i < orders.length; i++) {
 				orders[i].products = await getProductsByOrderId(orders[i].ID);

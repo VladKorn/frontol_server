@@ -68,13 +68,13 @@ var DbRequest = function (query) { return __awaiter(_this, void 0, void 0, funct
     });
 }); };
 var addColl = function () {
-    DbRequest("ALTER TABLE DOCUMENT ADD last_order_update_test VARCHAR(25)");
+    DbRequest("ALTER TABLE DOCUMENT ADD last_order_update VARCHAR(25)");
 };
 var getOrdersFromDate = function (date) { return __awaiter(_this, void 0, void 0, function () {
     var orders;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, DbRequest("SELECT first 5* FROM DOCUMENT WHERE last_order_update_test > '" + date + "' ORDER BY last_order_update_test desc")];
+            case 0: return [4, DbRequest("SELECT first 5* FROM DOCUMENT WHERE last_order_update > '" + date + "' ORDER BY last_order_update desc")];
             case 1:
                 orders = _a.sent();
                 return [2, orders];
@@ -85,7 +85,7 @@ var createTrigger = function () { return __awaiter(_this, void 0, void 0, functi
     var res;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, DbRequest("create trigger on_orders_change for DOCUMENT\n    before insert or update\nas\n  begin\n    new.last_order_update_test = CURRENT_TIMESTAMP;\n  end")["catch"](function (err) {
+            case 0: return [4, DbRequest("create trigger on_orders_change for DOCUMENT\n    before insert or update\nas\n  begin\n    new.last_order_update = CURRENT_TIMESTAMP;\n  end")["catch"](function (err) {
                     console.log("createTriger_err", err);
                 })];
             case 1:
@@ -153,7 +153,7 @@ var eventListener = function () { return __awaiter(_this, void 0, void 0, functi
                             case 1:
                                 orders = (_b.sent());
                                 if (!(orders.length > 0)) return [3, 6];
-                                lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE_TEST;
+                                lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
                                 saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
                                 i = 0;
                                 _b.label = 2;
