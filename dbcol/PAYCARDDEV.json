@@ -1,0 +1,26 @@
+[
+  {
+    "ID": 2159787,
+    "CAPPAY": 0,
+    "CAPINTPAY": 0,
+    "CAPDISC": 0,
+    "CAPMOBILE": 0,
+    "CAPGKH": 0,
+    "DEVICEID": 2159786,
+    "SLIPCOUNT": 1,
+    "MINSUMADD": 0,
+    "MINSUMSUB": 0,
+    "MINCASHPAY": 0,
+    "KIND": "",
+    "USECURRENCY": 0,
+    "LOCKOTHER": 0,
+    "PRINTGROUPID": 0,
+    "BONUSONLY": 0,
+    "MINCASHPAYSUM": 0,
+    "CODEDISCDISABLE": null,
+    "NEEDTRANSLATEWARECODE": 0,
+    "MINBONUSPAYSUM": 0,
+    "FREEPRICEIDENT": "0",
+    "CAPGIFTCARD": 0
+  }
+]

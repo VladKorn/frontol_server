@@ -1,0 +1,29 @@
+[
+  {
+    "ID": 2157493,
+    "CODE": 8,
+    "RMINTERFACEID": 1,
+    "KEYBMAPID": 2157110,
+    "BDOCODE": 0,
+    "CHNG": 16098,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2157494,
+    "CODE": 2,
+    "RMINTERFACEID": 1,
+    "KEYBMAPID": 2157396,
+    "BDOCODE": 0,
+    "CHNG": 4831,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2159602,
+    "CODE": 3,
+    "RMINTERFACEID": 1,
+    "KEYBMAPID": 2159600,
+    "BDOCODE": null,
+    "CHNG": null,
+    "OWNERBDO": 0
+  }
+]

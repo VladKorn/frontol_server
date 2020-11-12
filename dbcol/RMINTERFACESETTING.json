@@ -1,0 +1,92 @@
+[
+  {
+    "ID": 2157675,
+    "RMINTERFACEID": 1,
+    "NAME": "ViewPartsDocView",
+    "VAL": "5;№ РМ;7|6;№ док.;8|7;№ смены;8|1;Вид;5|2;Сумма;12|4;Разрез;11|8;Зал/Т.о.;12|10;Клиент;17|9;Зарезервирован на;20",
+    "BDOCODE": 0,
+    "CHNG": 45431,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2157693,
+    "RMINTERFACEID": 1,
+    "NAME": "TouchScreenWayBillID",
+    "VAL": "2159250",
+    "BDOCODE": 0,
+    "CHNG": 45366,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2158941,
+    "RMINTERFACEID": 1,
+    "NAME": "StatusLineColor",
+    "VAL": "8944494",
+    "BDOCODE": 0,
+    "CHNG": 45339,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2158942,
+    "RMINTERFACEID": 1,
+    "NAME": "StatusLineBorderColor",
+    "VAL": "12364697",
+    "BDOCODE": 0,
+    "CHNG": 45340,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2158943,
+    "RMINTERFACEID": 1,
+    "NAME": "TouchScreenEGAISDocsID",
+    "VAL": "2159248",
+    "BDOCODE": 0,
+    "CHNG": 45367,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2159156,
+    "RMINTERFACEID": 1,
+    "NAME": "ViewDocKind",
+    "VAL": "1",
+    "BDOCODE": 0,
+    "CHNG": 45328,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2159257,
+    "RMINTERFACEID": 1,
+    "NAME": "OtherWinsBottomMargin",
+    "VAL": "0",
+    "BDOCODE": 0,
+    "CHNG": 45381,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2159258,
+    "RMINTERFACEID": 1,
+    "NAME": "OtherWinsTopMargin",
+    "VAL": "0",
+    "BDOCODE": 0,
+    "CHNG": 45382,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2159259,
+    "RMINTERFACEID": 1,
+    "NAME": "OtherWinsLeftMargin",
+    "VAL": "0",
+    "BDOCODE": 0,
+    "CHNG": 45383,
+    "OWNERBDO": 0
+  },
+  {
+    "ID": 2159260,
+    "RMINTERFACEID": 1,
+    "NAME": "OtherWinsRightMargin",
+    "VAL": "0",
+    "BDOCODE": 0,
+    "CHNG": 45384,
+    "OWNERBDO": 0
+  }
+]
