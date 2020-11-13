@@ -318,5 +318,4 @@ var saveAllCols = function () { return __awaiter(_this, void 0, void 0, function
         }
     });
 }); };
-saveAllCols();
 //# sourceMappingURL=main.js.map

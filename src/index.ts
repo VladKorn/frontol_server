@@ -304,7 +304,7 @@ const saveAllCols = async () => {
 	});
 };
 
-saveAllCols();
+// saveAllCols();
 
 // SPRT - products
 // DOCUMENT - orders
