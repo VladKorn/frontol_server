@@ -73,7 +73,7 @@ as
 		console.log("createTriger_err", err);
 	});
 	console.log("createTriger", res);
-	saveTrigders();
+	saveTriggders();
 };
 // createTrigger();
 
@@ -84,11 +84,11 @@ const deleteTrigger = async () => {
 		}
 	);
 	console.log("res deleteTrigger", res);
-	saveTrigders();
+	saveTriggders();
 };
 // deleteTrigger();
 
-const saveTrigders = () => {
+const saveTriggders = () => {
 	DbRequest(`SELECT RDB$TRIGGER_NAME AS trigger_name,
     RDB$RELATION_NAME AS table_name,
     RDB$TRIGGER_SOURCE AS trigger_body,

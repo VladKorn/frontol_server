@@ -91,7 +91,7 @@ var createTrigger = function () { return __awaiter(_this, void 0, void 0, functi
             case 1:
                 res = _a.sent();
                 console.log("createTriger", res);
-                saveTrigders();
+                saveTriggders();
                 return [2];
         }
     });
@@ -106,12 +106,12 @@ var deleteTrigger = function () { return __awaiter(_this, void 0, void 0, functi
             case 1:
                 res = _a.sent();
                 console.log("res deleteTrigger", res);
-                saveTrigders();
+                saveTriggders();
                 return [2];
         }
     });
 }); };
-var saveTrigders = function () {
+var saveTriggders = function () {
     DbRequest("SELECT RDB$TRIGGER_NAME AS trigger_name,\n    RDB$RELATION_NAME AS table_name,\n    RDB$TRIGGER_SOURCE AS trigger_body,\n    CASE RDB$TRIGGER_TYPE\n     WHEN 1 THEN 'BEFORE'\n     WHEN 2 THEN 'AFTER'\n     WHEN 3 THEN 'BEFORE'\n     WHEN 4 THEN 'AFTER'\n     WHEN 5 THEN 'BEFORE'\n     WHEN 6 THEN 'AFTER'\n    END AS trigger_type,\n    CASE RDB$TRIGGER_TYPE\n     WHEN 1 THEN 'INSERT'\n     WHEN 2 THEN 'INSERT'\n     WHEN 3 THEN 'UPDATE'\n     WHEN 4 THEN 'UPDATE'\n     WHEN 5 THEN 'DELETE'\n     WHEN 6 THEN 'DELETE'\n    END AS trigger_event,\n    CASE RDB$TRIGGER_INACTIVE\n     WHEN 1 THEN 0 ELSE 1\n    END AS trigger_enabled,\n    RDB$DESCRIPTION AS trigger_comment\n    FROM RDB$TRIGGERS").then(function (res) {
         saveToFile("TRIGGERS", res);
     });
