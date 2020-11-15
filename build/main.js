@@ -74,7 +74,7 @@ var getOrdersFromDate = function (date) { return __awaiter(_this, void 0, void 0
     var orders;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, DbRequest("SELECT first 5* FROM DOCUMENT WHERE last_order_update > '" + date + "' ORDER BY last_order_update desc")];
+            case 0: return [4, DbRequest("SELECT first 5* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '" + date + "' ORDER BY last_order_update desc")];
             case 1:
                 orders = _a.sent();
                 return [2, orders];
@@ -223,7 +223,7 @@ var getProductsByOrderId = function (orderId) { return __awaiter(_this, void 0, 
                 products = [];
                 for (i = 0; i < tranzt.length; i++) {
                     item = tranzt[i];
-                    if (item.WARECODE > 0 && item.SUMM && item.WAREMARK && item.QUANTITY) {
+                    if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
                         product = {
                             price: item.SUMM,
                             code: item.WARECODE,
@@ -318,4 +318,5 @@ var saveAllCols = function () { return __awaiter(_this, void 0, void 0, function
         }
     });
 }); };
+saveAllCols();
 //# sourceMappingURL=main.js.map

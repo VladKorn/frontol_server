@@ -51,15 +51,9 @@ const addColl = () => {
 
 const getOrdersFromDate = async (date: string) => {
 	const orders = await DbRequest(
-		`SELECT first 5* FROM DOCUMENT WHERE last_order_update > '${date}' ORDER BY last_order_update desc`
+		`SELECT first 5* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
 	);
 	return orders;
-	// fs.writeFile(
-	// 	`orders.json`,
-	// 	JSON.stringify(orders, null, 2),
-	// 	null,
-	// 	() => {}
-	// );
 };
 // getOrdersFromDate(`2020-11-01T22:00:00.000Z`);
 
@@ -192,7 +186,7 @@ const getProductsByOrderId = async (orderId: number) => {
 	for (let i = 0; i < tranzt.length; i++) {
 		//@ts-ignore
 		let item = tranzt[i];
-		if (item.WARECODE > 0 && item.SUMM && item.WAREMARK && item.QUANTITY) {
+		if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
 			// let product = await getProductByCode(item.WARECODE);
 			let product = {
 				price: item.SUMM,
@@ -304,7 +298,7 @@ const saveAllCols = async () => {
 	});
 };
 
-// saveAllCols();
+saveAllCols();
 
 // SPRT - products
 // DOCUMENT - orders
