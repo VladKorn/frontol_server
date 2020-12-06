@@ -144,12 +144,24 @@ const eventListener = async () => {
 		>;
 		if (orders.length > 0) {
 			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
-			saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
+			// saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
+			
 			for (let i = 0; i < orders.length; i++) {
 				orders[i].products = await getProductsByOrderId(orders[i].ID);
 			}
+			const _orders:Orders = [];
+			orders.forEach(_order=>{
+				if(_order.products.length > 0){
+					_orders.push(_order);
+				}
+			});
+			// saveToFile("orders",_orders);
+			if (_orders.length > 0) {
+				return _orders;
+			} else{
+				return false;
+			}
 
-			return orders;
 		} else {
 			return false;
 		}
@@ -298,7 +310,7 @@ const saveAllCols = async () => {
 	});
 };
 
-saveAllCols();
+// saveAllCols();
 
 // SPRT - products
 // DOCUMENT - orders
