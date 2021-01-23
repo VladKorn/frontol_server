@@ -51,7 +51,7 @@ const addColl = () => {
 
 const getOrdersFromDate = async (date: string) => {
 	const orders = await DbRequest(
-		`SELECT first 5* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
+		`SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
 	);
 	return orders;
 };
@@ -127,15 +127,17 @@ const readFile = (name: string) => {
 
 const sendToSite = (data: any) => {
 	// saveToFile(`data`, data);
-	console.log("sendToSite");
-	fetch(`http://magday.ru/frontol/order.php`, {
+	console.log("sendToSite" , data.length);
+	fetch(`https://magday.ru/frontol/order.php`, {
 		method: "post",
 		body: JSON.stringify({ orders: data }),
-	});
+	})
+	// .then(res => res.text()).then((res)=>{console.log("res" , res)});
 };
 
 const eventListener = async () => {
 	const state: any = await readFile("state");
+	console.log("initial state" , state)
 	let lastTimeUpdate = state.lastTimeUpdate;
 	// let lastTimeUpdate = `2020-11-11 20:30:09.7460`;
 	const checkOrdersUpdates = async () => {
@@ -144,7 +146,7 @@ const eventListener = async () => {
 		>;
 		if (orders.length > 0) {
 			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
-			// saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
+			saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
 			
 			for (let i = 0; i < orders.length; i++) {
 				orders[i].products = await getProductsByOrderId(orders[i].ID);
@@ -155,7 +157,8 @@ const eventListener = async () => {
 					_orders.push(_order);
 				}
 			});
-			// saveToFile("orders",_orders);
+			saveToFile("orders",orders);
+			saveToFile("_orders",_orders);
 			if (_orders.length > 0) {
 				return _orders;
 			} else{
@@ -191,13 +194,17 @@ const getProductByCode = async (code: number) => {
 const getProductsByOrderId = async (orderId: number) => {
 	console.log(`getProductsByOrderId orderId`, orderId);
 	const tranzt = await DbRequest(
-		`SELECT first 50 * FROM TRANZT WHERE DOCUMENTID = ${orderId}`
+		`SELECT * FROM TRANZT WHERE DOCUMENTID = ${orderId}`
 	);
 	let products: any = [];
+	//@ts-ignore
+	// console.log("tranzt.length" , tranzt.length);
+
 	//@ts-ignore
 	for (let i = 0; i < tranzt.length; i++) {
 		//@ts-ignore
 		let item = tranzt[i];
+		// console.log("tranzt item" , item);
 		if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
 			// let product = await getProductByCode(item.WARECODE);
 			let product = {
@@ -209,9 +216,11 @@ const getProductsByOrderId = async (orderId: number) => {
 			products.push(product);
 		}
 	}
+	// saveToFile("tranzt", tranzt);
+	console.log(`getProductsByOrderId res`, products.length);
+
 	return products;
 
-	saveToFile("tranzt", tranzt);
 	const getProductCodeFromTranzt = (tranzt: any) => {
 		let code;
 		tranzt.forEach((element: any) => {
