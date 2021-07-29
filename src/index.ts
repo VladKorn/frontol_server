@@ -127,44 +127,43 @@ const readFile = (name: string) => {
 
 const sendToSite = (data: any) => {
 	// saveToFile(`data`, data);
-	console.log("sendToSite" , data.length);
+	console.log("sendToSite", data.length);
 	fetch(`https://magday.ru/frontol/order.php`, {
 		method: "post",
 		body: JSON.stringify({ orders: data }),
-	})
+	});
 	// .then(res => res.text()).then((res)=>{console.log("res" , res)});
 };
 
 const eventListener = async () => {
 	const state: any = await readFile("state");
-	console.log("initial state" , state)
+	console.log("initial state", state);
 	let lastTimeUpdate = state.lastTimeUpdate;
 	// let lastTimeUpdate = `2020-11-11 20:30:09.7460`;
 	const checkOrdersUpdates = async () => {
-		const orders = (await getOrdersFromDate(lastTimeUpdate)) as Array<
-			tables.RootObject
-		>;
+		const orders = (await getOrdersFromDate(
+			lastTimeUpdate
+		)) as Array<tables.RootObject>;
 		if (orders.length > 0) {
 			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
 			saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
-			
+
 			for (let i = 0; i < orders.length; i++) {
 				orders[i].products = await getProductsByOrderId(orders[i].ID);
 			}
-			const _orders:Orders = [];
-			orders.forEach(_order=>{
-				if(_order.products.length > 0){
+			const _orders: Orders = [];
+			orders.forEach((_order) => {
+				if (_order.products.length > 0) {
 					_orders.push(_order);
 				}
 			});
-			saveToFile("orders",orders);
-			saveToFile("_orders",_orders);
+			saveToFile("orders", orders);
+			saveToFile("_orders", _orders);
 			if (_orders.length > 0) {
 				return _orders;
-			} else{
+			} else {
 				return false;
 			}
-
 		} else {
 			return false;
 		}
@@ -209,9 +208,8 @@ const getProductsByOrderId = async (orderId: number) => {
 			// let product = await getProductByCode(item.WARECODE);
 			let product = {
 				price: item.SUMM,
-                code: item.WARECODE,
-                quantity: item.QUANTITY,
-                
+				code: item.WARECODE,
+				quantity: item.QUANTITY,
 			};
 			products.push(product);
 		}
@@ -299,22 +297,22 @@ const saveAllCols = async () => {
 		// console.log(`count ${colName}`, resCount);
 		Firebird.attach(options, function (err: any, db: any) {
 			if (err) throw err;
-			db.query(`SELECT skip ${skip} * FROM ${colName}`, function (
-				err: any,
-				result: any
-			) {
-				if (err) {
-					console.log("err", err);
+			db.query(
+				`SELECT skip ${skip} * FROM ${colName}`,
+				function (err: any, result: any) {
+					if (err) {
+						console.log("err", err);
+					}
+					// console.log("result 123", result);
+					fs.writeFile(
+						`dbcol/${colName}.json`,
+						JSON.stringify(result, null, 2),
+						null,
+						() => {}
+					);
+					db.detach();
 				}
-				// console.log("result 123", result);
-				fs.writeFile(
-					`dbcol/${colName}.json`,
-					JSON.stringify(result, null, 2),
-					null,
-					() => {}
-				);
-				db.detach();
-			});
+			);
 		});
 	});
 };
@@ -323,4 +321,3 @@ const saveAllCols = async () => {
 
 // SPRT - products
 // DOCUMENT - orders
-

@@ -58,8 +58,10 @@ declare module tables {
 		CORRECTREMAIND?: any;
 		CHNGFM: number;
 		UUID: string;
-        FULLPREPAYMENT: number;
-        LAST_ORDER_UPDATE:string;
-        products?: any;
+		FULLPREPAYMENT: number;
+		LAST_ORDER_UPDATE: string;
+		products?: any;
 	}
 }
+
+type Orders = Array<tables.RootObject>;
