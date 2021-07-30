@@ -10,6 +10,74 @@ global.fetch = require("node-fetch");
 // 		console.log("res", res);
 // 	});
 
+export interface Product {
+	price: number;
+	code: number;
+	quantity: number;
+}
+export interface Order {
+	STATE: number;
+	ID: number;
+	SUMM: number;
+	products: any[];
+}
+const clearEmptyOrders = (_orders: Order[]) => {
+	return _orders.filter((x) => x.SUMM > 0);
+};
+export const clearRemovedProducts = (_products: Product[]) => {
+	const removedProds = _products.filter((x) => x.price < 0);
+	// console.log("order.products", order.products);
+	// console.log("removedProds", removedProds);
+
+	// console.log("removedProds", -removedProds[0].price);
+	const prods = _products.filter((prod) => {
+		if (prod.price < 0) return false;
+		let isRemovedProd = false;
+		removedProds.forEach((x) => {
+			if (
+				prod.price === -x.price &&
+				prod.code === x.code &&
+				prod.quantity === -x.quantity
+			)
+				isRemovedProd = true;
+		});
+		if (isRemovedProd) return false;
+
+		return true;
+	});
+	return prods;
+};
+
+const prepareOrderData = (_orders: Orders) => {
+	const data: Order[] = [];
+	_orders.forEach((_order) => {
+		let products: Product[] = [];
+
+		let needRemove = false;
+		_order.products.forEach((prod: Product) => {
+			if (prod.price < 0) {
+				needRemove = true;
+			}
+		});
+
+		if (needRemove) {
+			products = clearRemovedProducts(_order.products);
+		} else {
+			products = _order.products;
+		}
+
+		data.push({
+			STATE: _order.STATE,
+			ID: _order.ID,
+			SUMM: _order.SUMM,
+			products: products,
+		});
+		// _item;
+	});
+	const _data = clearEmptyOrders(data);
+	return _data;
+};
+
 const getOrdersFromDate = async (date: string) => {
 	const orders = await DbRequest(
 		`SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
@@ -18,10 +86,12 @@ const getOrdersFromDate = async (date: string) => {
 };
 // getOrdersFromDate(`2020-11-01T22:00:00.000Z`);
 
-const sendToSite = (data: any) => {
-	saveToFile(`data`, data);
+const sendToSite = (_data: Orders) => {
+	saveToFile(`data`, _data);
+	const data = prepareOrderData(_data);
+	saveToFile(`newData`, data);
 	console.log("sendToSite", data.length);
-	fetch(`https://magday.ru/frontol/order.php`, {
+	fetch(`https://admin.magday.ru/frontol/order.php`, {
 		method: "post",
 		body: JSON.stringify({ orders: data }),
 	});
@@ -84,7 +154,7 @@ const getProductByCode = async (code: number) => {
 };
 
 const getProductsByOrderId = async (orderId: number) => {
-	console.log(`getProductsByOrderId orderId`, orderId);
+	// console.log(`getProductsByOrderId orderId`, orderId);
 	const tranzt = await DbRequest(
 		`SELECT * FROM TRANZT WHERE DOCUMENTID = ${orderId}`
 	);
@@ -108,7 +178,7 @@ const getProductsByOrderId = async (orderId: number) => {
 		}
 	}
 	// saveToFile("tranzt", tranzt);
-	console.log(`getProductsByOrderId res`, products.length);
+	// console.log(`getProductsByOrderId res`, products.length);
 
 	return products;
 

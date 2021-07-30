@@ -1,10 +1,12 @@
 {
 	"compilerOptions": {
-		"module": "system",
+		"target": "es5",
+		// "module": "system",
 		"noImplicitAny": true,
 		"removeComments": true,
 		"preserveConstEnums": true,
-		"outFile": "build/main.js",
+		// "outFile": "build/main.js",
+		"outDir": "build",
 		"sourceMap": true
 	},
 	"include": ["src/**/*"],

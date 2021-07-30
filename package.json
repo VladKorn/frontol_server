@@ -1,19 +1,22 @@
 {
-  "name": "frontol_server",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "dependencies": {
-    "node-fetch": "^2.6.1",
-    "node-firebird": "^0.9.8"
-  },
-  "devDependencies": {
-    "@types/node": "^14.14.6",
-    "typescript": "^4.0.5"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC"
+	"name": "frontol_server",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"dependencies": {
+		"node-fetch": "^2.6.1",
+		"node-firebird": "^0.9.8"
+	},
+	"devDependencies": {
+		"@types/node": "^14.14.6",
+		"typescript": "^4.3.5"
+	},
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "tsc -w",
+		"build": "tsc",
+		"start": "node build/index.js"
+	},
+	"author": "",
+	"license": "ISC"
 }
