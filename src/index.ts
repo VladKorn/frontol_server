@@ -1,4 +1,4 @@
-import { saveToFile, readFile, DbRequest } from "./tools";
+import { saveToFile, readFile, DbRequest, saveAllCols } from "./tools";
 global.fetch = require("node-fetch");
 // import Firebird from "node-firebird";
 // import fs from "fs";
@@ -86,14 +86,16 @@ const getOrdersFromDate = async (date: string) => {
 };
 // getOrdersFromDate(`2020-11-01T22:00:00.000Z`);
 
-const sendToSite = (_data: Orders) => {
+const sendToSite = async (_data: Orders) => {
 	saveToFile(`data`, _data);
 	const data = prepareOrderData(_data);
 	saveToFile(`newData`, data);
 	console.log("sendToSite", data.length);
+	const config: any = await readFile("config");
+
 	fetch(`https://admin.magday.ru/frontol/order.php`, {
 		method: "post",
-		body: JSON.stringify({ orders: data }),
+		body: JSON.stringify({ orders: data, userId: config.userId }),
 	});
 	// .then(res => res.text()).then((res)=>{console.log("res" , res)});
 };
@@ -109,7 +111,7 @@ const eventListener = async () => {
 		)) as Array<tables.RootObject>;
 		if (orders.length > 0) {
 			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
-			saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
+			await saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
 
 			for (let i = 0; i < orders.length; i++) {
 				orders[i].products = await getProductsByOrderId(orders[i].ID);
@@ -120,8 +122,7 @@ const eventListener = async () => {
 					_orders.push(_order);
 				}
 			});
-			saveToFile("orders", orders);
-			saveToFile("_orders", _orders);
+			await saveToFile("orders", orders);
 			if (_orders.length > 0) {
 				return _orders;
 			} else {

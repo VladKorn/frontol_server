@@ -36,37 +36,88 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.clearRemovedProducts = void 0;
 var tools_1 = require("./tools");
 global.fetch = require("node-fetch");
-var prepareOrderData = function (_data) {
+var clearEmptyOrders = function (_orders) {
+    return _orders.filter(function (x) { return x.SUMM > 0; });
+};
+var clearRemovedProducts = function (_products) {
+    var removedProds = _products.filter(function (x) { return x.price < 0; });
+    var prods = _products.filter(function (prod) {
+        if (prod.price < 0)
+            return false;
+        var isRemovedProd = false;
+        removedProds.forEach(function (x) {
+            if (prod.price === -x.price &&
+                prod.code === x.code &&
+                prod.quantity === -x.quantity)
+                isRemovedProd = true;
+        });
+        if (isRemovedProd)
+            return false;
+        return true;
+    });
+    return prods;
+};
+exports.clearRemovedProducts = clearRemovedProducts;
+var prepareOrderData = function (_orders) {
     var data = [];
-    _data.forEach(function (_item) {
+    _orders.forEach(function (_order) {
+        var products = [];
+        var needRemove = false;
+        _order.products.forEach(function (prod) {
+            if (prod.price < 0) {
+                needRemove = true;
+            }
+        });
+        if (needRemove) {
+            products = exports.clearRemovedProducts(_order.products);
+        }
+        else {
+            products = _order.products;
+        }
         data.push({
-            STATE: _item.STATE,
-            ID: _item.ID,
-            SUMM: _item.SUMM,
-            products: _item.products,
+            STATE: _order.STATE,
+            ID: _order.ID,
+            SUMM: _order.SUMM,
+            products: products,
         });
     });
-    return data;
+    var _data = clearEmptyOrders(data);
+    return _data;
 };
 var getOrdersFromDate = function (date) { return __awaiter(void 0, void 0, void 0, function () {
     var orders;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, tools_1.DbRequest("SELECT first 500* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '" + date + "' ORDER BY last_order_update desc")];
+            case 0: return [4, tools_1.DbRequest("SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '" + date + "' ORDER BY last_order_update desc")];
             case 1:
                 orders = _a.sent();
                 return [2, orders];
         }
     });
 }); };
-var sendToSite = function (_data) {
-    tools_1.saveToFile("data", _data);
-    var data = prepareOrderData(_data);
-    tools_1.saveToFile("newData", data);
-    console.log("sendToSite", data.length);
-};
+var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, config;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                tools_1.saveToFile("data", _data);
+                data = prepareOrderData(_data);
+                tools_1.saveToFile("newData", data);
+                console.log("sendToSite", data.length);
+                return [4, tools_1.readFile("config")];
+            case 1:
+                config = _a.sent();
+                fetch("https://admin.magday.ru/frontol/order.php", {
+                    method: "post",
+                    body: JSON.stringify({ orders: data, userId: config.userId }),
+                });
+                return [2];
+        }
+    });
+}); };
 var eventListener = function () { return __awaiter(void 0, void 0, void 0, function () {
     var state, lastTimeUpdate, checkOrdersUpdates;
     return __generator(this, function (_a) {
@@ -83,38 +134,42 @@ var eventListener = function () { return __awaiter(void 0, void 0, void 0, funct
                             case 0: return [4, getOrdersFromDate(lastTimeUpdate)];
                             case 1:
                                 orders = (_b.sent());
-                                if (!(orders.length > 0)) return [3, 6];
+                                if (!(orders.length > 0)) return [3, 8];
                                 lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
-                                i = 0;
-                                _b.label = 2;
+                                return [4, tools_1.saveToFile("state", { lastTimeUpdate: lastTimeUpdate })];
                             case 2:
-                                if (!(i < orders.length)) return [3, 5];
+                                _b.sent();
+                                i = 0;
+                                _b.label = 3;
+                            case 3:
+                                if (!(i < orders.length)) return [3, 6];
                                 _a = orders[i];
                                 return [4, getProductsByOrderId(orders[i].ID)];
-                            case 3:
-                                _a.products = _b.sent();
-                                _b.label = 4;
                             case 4:
-                                i++;
-                                return [3, 2];
+                                _a.products = _b.sent();
+                                _b.label = 5;
                             case 5:
+                                i++;
+                                return [3, 3];
+                            case 6:
                                 _orders_1 = [];
                                 orders.forEach(function (_order) {
                                     if (_order.products.length > 0) {
                                         _orders_1.push(_order);
                                     }
                                 });
-                                tools_1.saveToFile("orders", orders);
-                                tools_1.saveToFile("_orders", _orders_1);
+                                return [4, tools_1.saveToFile("orders", orders)];
+                            case 7:
+                                _b.sent();
                                 if (_orders_1.length > 0) {
                                     return [2, _orders_1];
                                 }
                                 else {
                                     return [2, false];
                                 }
-                                return [3, 7];
-                            case 6: return [2, false];
-                            case 7: return [2];
+                                return [3, 9];
+                            case 8: return [2, false];
+                            case 9: return [2];
                         }
                     });
                 }); };

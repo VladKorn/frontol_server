@@ -36,8 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saveAllCols = exports.getAllCols = exports.onOrdersChange = exports.saveTriggders = exports.deleteTrigger = exports.createTrigger = exports.addColl = exports.readFile = exports.saveToFile = exports.DbRequest = void 0;
+exports.sendEmail = exports.saveAllCols = exports.getAllCols = exports.onOrdersChange = exports.saveTriggders = exports.deleteTrigger = exports.createTrigger = exports.addColl = exports.readFile = exports.saveToFile = exports.DbRequest = void 0;
 var fs = require("fs");
+var nodemailer = require("nodemailer");
 var Firebird = require("node-firebird");
 var options = {};
 options.host = "localhost";
@@ -69,9 +70,39 @@ var DbRequest = function (query) { return __awaiter(void 0, void 0, void 0, func
     });
 }); };
 exports.DbRequest = DbRequest;
-var saveToFile = function (name, obg) {
-    fs.writeFile(name + ".json", JSON.stringify(obg, null, 2), null, function () { });
-};
+var saveToFile = function (name, obg) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                data = JSON.stringify(obg, null, 2);
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 6]);
+                return [4, fs.writeFile(name + ".json", data, null, function () { })];
+            case 2:
+                _a.sent();
+                return [3, 6];
+            case 3:
+                error_1 = _a.sent();
+                console.error("Got an error trying to write to a file: " + error_1.message);
+                return [4, fs.unlink(name + ".json", function (err) {
+                        if (err)
+                            throw err;
+                    })];
+            case 4:
+                _a.sent();
+                return [4, fs.appendFile(name + ".json", data, function (err) {
+                        if (err)
+                            throw err;
+                    })];
+            case 5:
+                _a.sent();
+                return [3, 6];
+            case 6: return [2];
+        }
+    });
+}); };
 exports.saveToFile = saveToFile;
 var readFile = function (name) {
     return new Promise(function (resolve, reject) {
@@ -177,7 +208,9 @@ var saveAllCols = function () { return __awaiter(void 0, void 0, void 0, functio
                                         if (err) {
                                             console.log("err", err);
                                         }
-                                        fs.writeFile("dbcol/" + colName + ".json", JSON.stringify(result, null, 2), null, function () { });
+                                        if (result.length > 0) {
+                                            fs.writeFile("dbcol/" + colName + ".json", JSON.stringify(result, null, 2), null, function () { });
+                                        }
                                         db.detach();
                                     });
                                 });
@@ -190,4 +223,35 @@ var saveAllCols = function () { return __awaiter(void 0, void 0, void 0, functio
     });
 }); };
 exports.saveAllCols = saveAllCols;
+function sendEmail() {
+    return __awaiter(this, void 0, void 0, function () {
+        var transporter, info;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    transporter = nodemailer.createTransport({
+                        host: "smtp.mail.ru",
+                        port: 465,
+                        secure: true,
+                        auth: {
+                            user: "r12lb3gb@inbox.ru",
+                            pass: "Hxld1wstmI",
+                        },
+                    });
+                    return [4, transporter.sendMail({
+                            from: '"Fred Foo 👻" <r12lb3gb@inbox.ru>',
+                            to: "webvladkorn@gmail.com",
+                            subject: "Hello ✔",
+                            text: "Hello world?",
+                            html: "<b>Hello world?</b>",
+                        })];
+                case 1:
+                    info = _a.sent();
+                    console.log("Message sent: %s", info.messageId);
+                    return [2];
+            }
+        });
+    });
+}
+exports.sendEmail = sendEmail;
 //# sourceMappingURL=tools.js.map

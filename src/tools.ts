@@ -1,4 +1,8 @@
-const fs = require("fs");
+// const fs = require("fs").promises;
+import * as fs from "fs";
+import * as nodemailer from "nodemailer";
+
+// import * as Firebird from 'node-firebird';
 const Firebird = require("node-firebird");
 
 const options: any = {};
@@ -33,8 +37,21 @@ export const DbRequest = async (query: string) => {
 	});
 };
 //
-export const saveToFile = (name: string, obg: any) => {
-	fs.writeFile(`${name}.json`, JSON.stringify(obg, null, 2), null, () => {});
+export const saveToFile = async (name: string, obg: any) => {
+	const data = JSON.stringify(obg, null, 2);
+	try {
+		await fs.writeFile(`${name}.json`, data, null, () => {});
+	} catch (error) {
+		console.error(
+			`Got an error trying to write to a file: ${error.message}`
+		);
+		await fs.unlink(`${name}.json`, function (err: any) {
+			if (err) throw err;
+		});
+		await fs.appendFile(`${name}.json`, data, function (err) {
+			if (err) throw err;
+		});
+	}
 };
 export const readFile = (name: string) => {
 	return new Promise((resolve, reject) => {
@@ -152,15 +169,68 @@ export const saveAllCols = async () => {
 						console.log("err", err);
 					}
 					// console.log("result 123", result);
-					fs.writeFile(
-						`dbcol/${colName}.json`,
-						JSON.stringify(result, null, 2),
-						null,
-						() => {}
-					);
+					if (result.length > 0) {
+						fs.writeFile(
+							`dbcol/${colName}.json`,
+							JSON.stringify(result, null, 2),
+							null,
+							() => {}
+						);
+					}
 					db.detach();
 				}
 			);
 		});
 	});
 };
+
+export async function sendEmail() {
+	// Generate test SMTP service account from ethereal.email
+	// Only needed if you don't have a real mail account for testing
+	// let testAccount = await nodemailer.createTestAccount();
+
+	// create reusable transporter object using the default SMTP transport
+	let transporter = nodemailer.createTransport({
+		host: "smtp.mail.ru",
+		port: 465,
+		secure: true, // true for 465, false for other ports
+		auth: {
+			user: "r12lb3gb@inbox.ru", // generated ethereal user
+			pass: "Hxld1wstmI", // generated ethereal password
+		},
+	});
+
+	// send mail with defined transport object
+	let info = await transporter.sendMail({
+		from: '"Fred Foo 👻" <r12lb3gb@inbox.ru>', // sender address
+		to: "webvladkorn@gmail.com", // list of receivers
+		subject: "Hello ✔", // Subject line
+		text: "Hello world?", // plain text body
+		html: "<b>Hello world?</b>", // html body
+	});
+
+	console.log("Message sent: %s", info.messageId);
+	// Message sent: <b658f8ca-6296-ccf4-8306-87d57a0b4321@example.com>
+
+	// Preview only available when sending through an Ethereal account
+	// console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
+	// Preview URL: https://ethereal.email/message/WaQKMgKddxQDoou...
+}
+
+// let s = new SMTPClient({
+// 	host: "smtp.mail.ru",
+// 	port: 25,
+
+// 	// 465
+// });
+// export const sendEmail = () => {
+// 	(async function () {
+// 		await s.connect();
+// 		await s.greet({ hostname: "r12lb3gb@inbox.ru" }); // runs EHLO command or HELO as a fallback
+// 		await s.authPlain({ username: "test", password: "Hxld1wstmI" }); // authenticates a user
+// 		await s.mail({ from: "from@test.com" }); // runs MAIL FROM command
+// 		await s.rcpt({ to: "webvladkorn@gmail.com" }); // runs RCPT TO command (run this multiple times to add more recii)
+// 		await s.data("mail source"); // runs DATA command and streams email source
+// 		await s.quit(); // runs QUIT command
+// 	})().catch(console.error);
+// };
