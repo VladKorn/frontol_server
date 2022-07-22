@@ -119,12 +119,28 @@ var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, fun
     });
 }); };
 var eventListener = function () { return __awaiter(void 0, void 0, void 0, function () {
-    var state, lastTimeUpdate, checkOrdersUpdates;
+    var state, stateBackup, lastTimeUpdate, checkOrdersUpdates;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, tools_1.readFile("state")];
             case 1:
                 state = _a.sent();
+                console.log("state", state);
+                if (!(state.error || !state.lastTimeUpdate)) return [3, 5];
+                return [4, tools_1.readFile("stateBackup")];
+            case 2:
+                stateBackup = _a.sent();
+                if (!stateBackup.error) return [3, 3];
+                console.log("stateBackup state.error", stateBackup.error);
+                return [3, 5];
+            case 3:
+                console.log("stateBackup", stateBackup, stateBackup.lastTimeUpdate);
+                return [4, tools_1.saveToFile("state", stateBackup)];
+            case 4:
+                _a.sent();
+                state = stateBackup;
+                _a.label = 5;
+            case 5:
                 console.log("initial state", state);
                 lastTimeUpdate = state.lastTimeUpdate;
                 checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, function () {
@@ -139,6 +155,9 @@ var eventListener = function () { return __awaiter(void 0, void 0, void 0, funct
                                 return [4, tools_1.saveToFile("state", { lastTimeUpdate: lastTimeUpdate })];
                             case 2:
                                 _b.sent();
+                                setTimeout(function () {
+                                    tools_1.saveToFile("stateBackup", { lastTimeUpdate: lastTimeUpdate });
+                                }, 10000);
                                 i = 0;
                                 _b.label = 3;
                             case 3:

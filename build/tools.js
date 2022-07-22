@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmail = exports.saveAllCols = exports.getAllCols = exports.onOrdersChange = exports.saveTriggders = exports.deleteTrigger = exports.createTrigger = exports.addColl = exports.readFile = exports.saveToFile = exports.DbRequest = void 0;
+exports.sendEmail = exports.saveAllCols = exports.getAllCols = exports.onOrdersChange = exports.saveTriggders = exports.deleteTrigger = exports.createTrigger = exports.addColl = exports.readFile = exports.safeJsonParse = exports.saveToFile = exports.DbRequest = void 0;
 var fs = require("fs");
 var nodemailer = require("nodemailer");
 var Firebird = require("node-firebird");
@@ -75,7 +75,7 @@ var saveToFile = function (name, obg) { return __awaiter(void 0, void 0, void 0,
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                data = JSON.stringify(obg, null, 2);
+                data = JSON.stringify(obg);
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 6]);
@@ -104,16 +104,58 @@ var saveToFile = function (name, obg) { return __awaiter(void 0, void 0, void 0,
     });
 }); };
 exports.saveToFile = saveToFile;
-var readFile = function (name) {
-    return new Promise(function (resolve, reject) {
-        fs.readFile(name + ".json", "utf8", function (err, data) {
-            if (err) {
-                reject(err);
+var safeJsonParse = function (data) { return __awaiter(void 0, void 0, void 0, function () {
+    var _data;
+    return __generator(this, function (_a) {
+        try {
+            _data = JSON.parse(data);
+            if (_data) {
+                return [2, _data];
             }
-            resolve(JSON.parse(data));
-        });
+        }
+        catch (err) {
+            return [2, null];
+        }
+        return [2, null];
     });
-};
+}); };
+exports.safeJsonParse = safeJsonParse;
+var readFileSync = function (name) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        return [2, new Promise(function (resolve, reject) {
+                fs.readFile(name + ".json", "utf8", function (err, data) {
+                    if (err) {
+                        reject({ error: err });
+                    }
+                    resolve(data);
+                });
+            })];
+    });
+}); };
+var readFile = function (name) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, _data;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, readFileSync(name).catch(function (err) {
+                    return { error: err };
+                })];
+            case 1:
+                data = _a.sent();
+                return [4, exports.safeJsonParse(data).catch(function (err) {
+                        return { error: err };
+                    })];
+            case 2:
+                _data = _a.sent();
+                if (_data) {
+                    return [2, _data];
+                }
+                else {
+                    return [2, { error: "err" }];
+                }
+                return [2];
+        }
+    });
+}); };
 exports.readFile = readFile;
 var addColl = function () {
     exports.DbRequest("ALTER TABLE DOCUMENT ADD last_order_update VARCHAR(25)");

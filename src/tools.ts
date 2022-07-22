@@ -10,7 +10,7 @@ const options: any = {};
 options.host = "localhost";
 options.port = 3050;
 options.database = "database.fdb";
-options.database = "C:\\DB\\MAIN.GDB";
+options.database = "C:\\DB\\MAIN.GDB"; //DB - DB-FRONTOL
 options.user = "SYSDBA";
 options.password = "masterkey";
 options.lowercase_keys = false; // set to true to lowercase keys
@@ -38,7 +38,8 @@ export const DbRequest = async (query: string) => {
 };
 //
 export const saveToFile = async (name: string, obg: any) => {
-	const data = JSON.stringify(obg, null, 2);
+	const data = JSON.stringify(obg);
+	// console.log("saveToFile", name, data, obg.lastTimeUpdate);
 	try {
 		await fs.writeFile(`${name}.json`, data, null, () => {});
 	} catch (error) {
@@ -53,15 +54,43 @@ export const saveToFile = async (name: string, obg: any) => {
 		});
 	}
 };
-export const readFile = (name: string) => {
+export const safeJsonParse = async (data: any) => {
+	try {
+		const _data = JSON.parse(data);
+		if (_data) {
+			return _data;
+		}
+	} catch (err) {
+		// console.log("safeJsonParse err", err);
+		return null;
+	}
+	return null;
+};
+const readFileSync = async (name: string) => {
 	return new Promise((resolve, reject) => {
-		fs.readFile(`${name}.json`, "utf8", function (err: any, data: any) {
+		fs.readFile(`${name}.json`, "utf8", (err: any, data: any) => {
 			if (err) {
-				reject(err);
+				reject({ error: err });
 			}
-			resolve(JSON.parse(data));
+			resolve(data);
 		});
 	});
+};
+export const readFile = async (name: string) => {
+	const data = await readFileSync(name).catch((err) => {
+		return { error: err };
+	});
+	const _data = await safeJsonParse(data).catch((err) => {
+		return { error: err };
+	});
+	// console.log("_data", name, _data);
+	if (_data) {
+		// console.log("_data resolve", name, _data);
+		return _data;
+	} else {
+		// console.log("_data reject", "err");
+		return { error: "err" };
+	}
 };
 export const addColl = () => {
 	DbRequest(`ALTER TABLE DOCUMENT ADD last_order_update VARCHAR(25)`);

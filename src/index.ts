@@ -101,7 +101,18 @@ const sendToSite = async (_data: Orders) => {
 };
 
 const eventListener = async () => {
-	const state: any = await readFile("state");
+	let state: any = await readFile("state");
+	console.log("state", state);
+	if (state.error || !state.lastTimeUpdate) {
+		const stateBackup: any = await readFile("stateBackup");
+		if (stateBackup.error) {
+			console.log("stateBackup state.error", stateBackup.error);
+		} else {
+			console.log("stateBackup", stateBackup, stateBackup.lastTimeUpdate);
+			await saveToFile("state", stateBackup);
+			state = stateBackup;
+		}
+	}
 	console.log("initial state", state);
 	let lastTimeUpdate = state.lastTimeUpdate;
 	// let lastTimeUpdate = `2020-11-11 20:30:09.7460`;
@@ -112,6 +123,9 @@ const eventListener = async () => {
 		if (orders.length > 0) {
 			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
 			await saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
+			setTimeout(() => {
+				saveToFile("stateBackup", { lastTimeUpdate: lastTimeUpdate });
+			}, 10000);
 
 			for (let i = 0; i < orders.length; i++) {
 				orders[i].products = await getProductsByOrderId(orders[i].ID);
