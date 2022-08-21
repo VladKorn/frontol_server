@@ -9,8 +9,8 @@ const options: any = {};
 // options.host = "127.0.0.1";
 options.host = "localhost";
 options.port = 3050;
-options.database = "database.fdb";
-options.database = "C:\\DB\\MAIN.GDB"; //DB - DB-FRONTOL
+// options.database = "database.fdb";
+options.database = "C:\\DB-FRONTOL\\MAIN.GDB"; //DB - DB-FRONTOL MAIN.GDB
 options.user = "SYSDBA";
 options.password = "masterkey";
 options.lowercase_keys = false; // set to true to lowercase keys
@@ -21,18 +21,28 @@ options.pageSize = 4096; // default when creating database
 export const DbRequest = async (query: string) => {
 	return new Promise((resolve, reject) => {
 		Firebird.attach(options, function (err: any, db: any) {
+			// console.log("existsSync", fs.existsSync(options.database));
+			// if (fs.existsSync(options.database)) {
+			// }
 			if (err) {
+				console.log("err", err);
 				reject(err);
 			}
-			db.query(query, function (err: any, result: any) {
-				// db.query(`SELECT * FROM SPRT`, function (err, result) {
-				if (err) {
-					console.log("err", err);
-					reject(err);
-				}
-				resolve(result);
-				db.detach();
-			});
+			// console.log("db", db);
+			try {
+				db.query(query, function (err: any, result: any) {
+					// db.query(`SELECT * FROM SPRT`, function (err, result) {
+					if (err) {
+						console.log("err", err);
+						reject(err);
+					}
+					resolve(result);
+					db.detach();
+				});
+			} catch (err) {
+				console.log("err", err);
+				reject(err);
+			}
 		});
 	});
 };
@@ -179,38 +189,78 @@ export const getAllCols = async () => {
 };
 export const saveAllCols = async () => {
 	const cols = await getAllCols();
-	// console.log(cols);
+	console.log("cols", cols);
 	//@ts-ignore
-	cols.forEach(async (colName: any) => {
-		const resCount = await DbRequest(`SELECT count(*) FROM ${colName}`);
+	cols.filter(
+		(col: string) =>
+			col !== "PRINTFORM" &&
+			col !== "GIFTCARDCOUNTER" &&
+			col !== "COUPONTYPE" &&
+			col !== "AIGS1" &&
+			col !== "FMSYNCSTATE" &&
+			col !== "TRANZTEXCISESTAMP" &&
+			col !== "SERVICEDATA" &&
+			col !== "OFDAGENTREQUISITES"
+	).forEach(async (colName: any) => {
+		console.log("colName_", colName);
+		const resCount = await DbRequest(
+			`SELECT count(*) FROM ${colName}`
+		).catch((err) => {
+			console.log("resCount err", err);
+			return null;
+		});
+		console.log("resCount", resCount);
+		if (!resCount) return;
 		//@ts-ignore
 		const count = resCount[0].COUNT;
-		const skip = count > 10 ? count - 10 : 0;
-		// const skip = 0;
+		// const skip = count > 10 ? count - 10 : 0;
+		const skip = 0;
 		console.log(`count ${colName}`, count);
 		// console.log(`count ${colName}`, resCount);
-		Firebird.attach(options, function (err: any, db: any) {
-			if (err) throw err;
-			db.query(
-				`SELECT skip ${skip} * FROM ${colName}`,
-				function (err: any, result: any) {
-					if (err) {
-						console.log("err", err);
-					}
-					// console.log("result 123", result);
-					if (result.length > 0) {
-						fs.writeFile(
-							`dbcol/${colName}.json`,
-							JSON.stringify(result, null, 2),
-							null,
-							() => {}
-						);
-					}
-					db.detach();
+
+		try {
+			Firebird.attach(options, function (err: any, db: any) {
+				if (err) {
+					console.log("err", err);
+					return;
 				}
-			);
-		});
+				try {
+					db.query(
+						`SELECT skip ${skip} * FROM ${colName}`,
+						function (err: any, result: any) {
+							if (err) {
+								console.log("err", err);
+							}
+							// console.log("result 123", result);
+							if (result.length > 0) {
+								fs.writeFile(
+									`debug/dbcol/${colName}.json`,
+									JSON.stringify(result, null, 2),
+									null,
+									() => {}
+								);
+							}
+							db.detach();
+						}
+					);
+				} catch (err) {
+					console.log("db.query err", err);
+				}
+			});
+		} catch (err) {
+			console.log("err", err);
+		}
 	});
+};
+export const isCardPayment = async (id: number) => {
+	const items = await DbRequest(
+		`SELECT * FROM TRAUTH WHERE DOCUMENTID = ${id}`
+	);
+	// console.log("isCardPayment items", items);
+	if (Array.isArray(items) && items?.length > 0) {
+		return true;
+	}
+	return false;
 };
 
 export async function sendEmail() {

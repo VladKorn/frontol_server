@@ -36,7 +36,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearRemovedProducts = void 0;
+exports.getOrdersFromDate = exports.clearRemovedProducts = void 0;
 var tools_1 = require("./tools");
 global.fetch = require("node-fetch");
 var clearEmptyOrders = function (_orders) {
@@ -72,7 +72,7 @@ var prepareOrderData = function (_orders) {
             }
         });
         if (needRemove) {
-            products = exports.clearRemovedProducts(_order.products);
+            products = (0, exports.clearRemovedProducts)(_order.products);
         }
         else {
             products = _order.products;
@@ -82,6 +82,7 @@ var prepareOrderData = function (_orders) {
             ID: _order.ID,
             SUMM: _order.SUMM,
             products: products,
+            isCardPayment: _order.isCardPayment,
         });
     });
     var _data = clearEmptyOrders(data);
@@ -91,23 +92,26 @@ var getOrdersFromDate = function (date) { return __awaiter(void 0, void 0, void 
     var orders;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, tools_1.DbRequest("SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '" + date + "' ORDER BY last_order_update desc")];
+            case 0: return [4, (0, tools_1.DbRequest)("SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '".concat(date, "' ORDER BY last_order_update desc"))];
             case 1:
                 orders = _a.sent();
+                console.log("getOrdersFromDate date orders.length", date, orders === null || orders === void 0 ? void 0 : orders.length);
+                (0, tools_1.saveToFile)("orders_selected", orders);
                 return [2, orders];
         }
     });
 }); };
+exports.getOrdersFromDate = getOrdersFromDate;
 var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, function () {
     var data, config;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                tools_1.saveToFile("data", _data);
+                (0, tools_1.saveToFile)("data", _data);
                 data = prepareOrderData(_data);
-                tools_1.saveToFile("newData", data);
+                (0, tools_1.saveToFile)("newData", data);
                 console.log("sendToSite", data.length);
-                return [4, tools_1.readFile("config")];
+                return [4, (0, tools_1.readFile)("config")];
             case 1:
                 config = _a.sent();
                 fetch("https://admin.magday.ru/frontol/order.php", {
@@ -118,99 +122,108 @@ var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, fun
         }
     });
 }); };
-var eventListener = function () { return __awaiter(void 0, void 0, void 0, function () {
-    var state, stateBackup, lastTimeUpdate, checkOrdersUpdates;
+var getState = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var state, stateBackup;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, tools_1.readFile("state")];
+            case 0: return [4, (0, tools_1.readFile)("state")];
             case 1:
                 state = _a.sent();
-                console.log("state", state);
                 if (!(state.error || !state.lastTimeUpdate)) return [3, 5];
-                return [4, tools_1.readFile("stateBackup")];
+                return [4, (0, tools_1.readFile)("stateBackup")];
             case 2:
                 stateBackup = _a.sent();
                 if (!stateBackup.error) return [3, 3];
-                console.log("stateBackup state.error", stateBackup.error);
                 return [3, 5];
-            case 3:
-                console.log("stateBackup", stateBackup, stateBackup.lastTimeUpdate);
-                return [4, tools_1.saveToFile("state", stateBackup)];
+            case 3: return [4, (0, tools_1.saveToFile)("state", stateBackup)];
             case 4:
                 _a.sent();
                 state = stateBackup;
                 _a.label = 5;
             case 5:
                 console.log("initial state", state);
-                lastTimeUpdate = state.lastTimeUpdate;
-                checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, function () {
-                    var orders, i, _a, _orders_1;
-                    return __generator(this, function (_b) {
-                        switch (_b.label) {
-                            case 0: return [4, getOrdersFromDate(lastTimeUpdate)];
-                            case 1:
-                                orders = (_b.sent());
-                                if (!(orders.length > 0)) return [3, 8];
-                                lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
-                                return [4, tools_1.saveToFile("state", { lastTimeUpdate: lastTimeUpdate })];
-                            case 2:
-                                _b.sent();
-                                setTimeout(function () {
-                                    tools_1.saveToFile("stateBackup", { lastTimeUpdate: lastTimeUpdate });
-                                }, 10000);
-                                i = 0;
-                                _b.label = 3;
-                            case 3:
-                                if (!(i < orders.length)) return [3, 6];
-                                _a = orders[i];
-                                return [4, getProductsByOrderId(orders[i].ID)];
-                            case 4:
-                                _a.products = _b.sent();
-                                _b.label = 5;
-                            case 5:
-                                i++;
-                                return [3, 3];
-                            case 6:
-                                _orders_1 = [];
-                                orders.forEach(function (_order) {
-                                    if (_order.products.length > 0) {
-                                        _orders_1.push(_order);
-                                    }
-                                });
-                                return [4, tools_1.saveToFile("orders", orders)];
-                            case 7:
-                                _b.sent();
-                                if (_orders_1.length > 0) {
-                                    return [2, _orders_1];
-                                }
-                                else {
-                                    return [2, false];
-                                }
-                                return [3, 9];
-                            case 8: return [2, false];
-                            case 9: return [2];
-                        }
-                    });
-                }); };
-                checkOrdersUpdates();
-                setInterval(function () { return __awaiter(void 0, void 0, void 0, function () {
-                    var changed_orders;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0:
-                                console.log("lastTimeUpdate", lastTimeUpdate);
-                                return [4, checkOrdersUpdates()];
-                            case 1:
-                                changed_orders = _a.sent();
-                                if (changed_orders) {
-                                    sendToSite(changed_orders);
-                                }
-                                return [2];
-                        }
-                    });
-                }); }, 5000);
-                return [2];
+                return [2, state];
         }
+    });
+}); };
+var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var state, lastTimeUpdate, orders, _lastTimeUpdate_1, i, _a, _b, _orders_1;
+    return __generator(this, function (_c) {
+        switch (_c.label) {
+            case 0: return [4, getState()];
+            case 1:
+                state = _c.sent();
+                lastTimeUpdate = state.lastTimeUpdate;
+                console.log("lastTimeUpdate", lastTimeUpdate);
+                return [4, (0, exports.getOrdersFromDate)(lastTimeUpdate)];
+            case 2:
+                orders = (_c.sent());
+                if (!(orders.length > 0)) return [3, 10];
+                _lastTimeUpdate_1 = orders.sort(function (x, z) {
+                    return (new Date(z.LAST_ORDER_UPDATE) - new Date(x.LAST_ORDER_UPDATE));
+                })[0].LAST_ORDER_UPDATE;
+                return [4, (0, tools_1.saveToFile)("state", { lastTimeUpdate: _lastTimeUpdate_1 })];
+            case 3:
+                _c.sent();
+                setTimeout(function () {
+                    (0, tools_1.saveToFile)("stateBackup", { lastTimeUpdate: _lastTimeUpdate_1 });
+                }, 10000);
+                i = 0;
+                _c.label = 4;
+            case 4:
+                if (!(i < orders.length)) return [3, 8];
+                console.log("eventListener order", orders[i].CHEQUENUMBER);
+                _a = orders[i];
+                return [4, getProductsByOrderId(orders[i].ID)];
+            case 5:
+                _a.products = _c.sent();
+                _b = orders[i];
+                return [4, (0, tools_1.isCardPayment)(orders[i].ID)];
+            case 6:
+                _b.isCardPayment = _c.sent();
+                _c.label = 7;
+            case 7:
+                i++;
+                return [3, 4];
+            case 8:
+                _orders_1 = [];
+                orders.forEach(function (_order) {
+                    if (_order.products.length > 0) {
+                        _orders_1.push(_order);
+                    }
+                });
+                return [4, (0, tools_1.saveToFile)("orders", orders)];
+            case 9:
+                _c.sent();
+                if (_orders_1.length > 0) {
+                    return [2, _orders_1];
+                }
+                else {
+                    return [2, false];
+                }
+                return [3, 11];
+            case 10: return [2, false];
+            case 11: return [2];
+        }
+    });
+}); };
+var eventListener = function () { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        setInterval(function () { return __awaiter(void 0, void 0, void 0, function () {
+            var changed_orders;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0: return [4, checkOrdersUpdates()];
+                    case 1:
+                        changed_orders = _a.sent();
+                        if (changed_orders) {
+                            sendToSite(changed_orders);
+                        }
+                        return [2];
+                }
+            });
+        }); }, 5000);
+        return [2];
     });
 }); };
 eventListener();
@@ -218,7 +231,7 @@ var getProductByCode = function (code) { return __awaiter(void 0, void 0, void 0
     var product;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, tools_1.DbRequest("SELECT * FROM SPRT WHERE CODE = " + code)];
+            case 0: return [4, (0, tools_1.DbRequest)("SELECT * FROM SPRT WHERE CODE = ".concat(code))];
             case 1:
                 product = _a.sent();
                 if (Array.isArray(product)) {
@@ -235,7 +248,7 @@ var getProductsByOrderId = function (orderId) { return __awaiter(void 0, void 0,
     var tranzt, products, i, item, product, getProductCodeFromTranzt, getProductPriceFromTranzt, productCode, product, productPrice;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, tools_1.DbRequest("SELECT * FROM TRANZT WHERE DOCUMENTID = " + orderId)];
+            case 0: return [4, (0, tools_1.DbRequest)("SELECT * FROM TRANZT WHERE DOCUMENTID = ".concat(orderId))];
             case 1:
                 tranzt = _a.sent();
                 products = [];
@@ -243,7 +256,8 @@ var getProductsByOrderId = function (orderId) { return __awaiter(void 0, void 0,
                     item = tranzt[i];
                     if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
                         product = {
-                            price: item.SUMM,
+                            priceBase: item.SUMM,
+                            price: item.SUMMWD,
                             code: item.WARECODE,
                             quantity: item.QUANTITY,
                         };
@@ -261,7 +275,7 @@ var getProductsByOrderId = function (orderId) { return __awaiter(void 0, void 0,
                 if (productPrice) {
                     product.price = productPrice;
                 }
-                tools_1.saveToFile("product", product);
+                (0, tools_1.saveToFile)("product", product);
                 return [2, [product]];
             case 4:
                 console.log("error - product not found");

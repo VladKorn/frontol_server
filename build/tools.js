@@ -36,15 +36,14 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmail = exports.saveAllCols = exports.getAllCols = exports.onOrdersChange = exports.saveTriggders = exports.deleteTrigger = exports.createTrigger = exports.addColl = exports.readFile = exports.safeJsonParse = exports.saveToFile = exports.DbRequest = void 0;
+exports.sendEmail = exports.isCardPayment = exports.saveAllCols = exports.getAllCols = exports.onOrdersChange = exports.saveTriggders = exports.deleteTrigger = exports.createTrigger = exports.addColl = exports.readFile = exports.safeJsonParse = exports.saveToFile = exports.DbRequest = void 0;
 var fs = require("fs");
 var nodemailer = require("nodemailer");
 var Firebird = require("node-firebird");
 var options = {};
 options.host = "localhost";
 options.port = 3050;
-options.database = "database.fdb";
-options.database = "C:\\DB\\MAIN.GDB";
+options.database = "C:\\DB-FRONTOL\\MAIN.GDB";
 options.user = "SYSDBA";
 options.password = "masterkey";
 options.lowercase_keys = false;
@@ -55,16 +54,23 @@ var DbRequest = function (query) { return __awaiter(void 0, void 0, void 0, func
         return [2, new Promise(function (resolve, reject) {
                 Firebird.attach(options, function (err, db) {
                     if (err) {
+                        console.log("err", err);
                         reject(err);
                     }
-                    db.query(query, function (err, result) {
-                        if (err) {
-                            console.log("err", err);
-                            reject(err);
-                        }
-                        resolve(result);
-                        db.detach();
-                    });
+                    try {
+                        db.query(query, function (err, result) {
+                            if (err) {
+                                console.log("err", err);
+                                reject(err);
+                            }
+                            resolve(result);
+                            db.detach();
+                        });
+                    }
+                    catch (err) {
+                        console.log("err", err);
+                        reject(err);
+                    }
                 });
             })];
     });
@@ -79,20 +85,20 @@ var saveToFile = function (name, obg) { return __awaiter(void 0, void 0, void 0,
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 6]);
-                return [4, fs.writeFile(name + ".json", data, null, function () { })];
+                return [4, fs.writeFile("".concat(name, ".json"), data, null, function () { })];
             case 2:
                 _a.sent();
                 return [3, 6];
             case 3:
                 error_1 = _a.sent();
-                console.error("Got an error trying to write to a file: " + error_1.message);
-                return [4, fs.unlink(name + ".json", function (err) {
+                console.error("Got an error trying to write to a file: ".concat(error_1.message));
+                return [4, fs.unlink("".concat(name, ".json"), function (err) {
                         if (err)
                             throw err;
                     })];
             case 4:
                 _a.sent();
-                return [4, fs.appendFile(name + ".json", data, function (err) {
+                return [4, fs.appendFile("".concat(name, ".json"), data, function (err) {
                         if (err)
                             throw err;
                     })];
@@ -123,7 +129,7 @@ exports.safeJsonParse = safeJsonParse;
 var readFileSync = function (name) { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         return [2, new Promise(function (resolve, reject) {
-                fs.readFile(name + ".json", "utf8", function (err, data) {
+                fs.readFile("".concat(name, ".json"), "utf8", function (err, data) {
                     if (err) {
                         reject({ error: err });
                     }
@@ -141,7 +147,7 @@ var readFile = function (name) { return __awaiter(void 0, void 0, void 0, functi
                 })];
             case 1:
                 data = _a.sent();
-                return [4, exports.safeJsonParse(data).catch(function (err) {
+                return [4, (0, exports.safeJsonParse)(data).catch(function (err) {
                         return { error: err };
                     })];
             case 2:
@@ -158,20 +164,20 @@ var readFile = function (name) { return __awaiter(void 0, void 0, void 0, functi
 }); };
 exports.readFile = readFile;
 var addColl = function () {
-    exports.DbRequest("ALTER TABLE DOCUMENT ADD last_order_update VARCHAR(25)");
+    (0, exports.DbRequest)("ALTER TABLE DOCUMENT ADD last_order_update VARCHAR(25)");
 };
 exports.addColl = addColl;
 var createTrigger = function () { return __awaiter(void 0, void 0, void 0, function () {
     var res;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, exports.DbRequest("create trigger on_orders_change for DOCUMENT\n    before insert or update\nas\n  begin\n    new.last_order_update = CURRENT_TIMESTAMP;\n  end").catch(function (err) {
+            case 0: return [4, (0, exports.DbRequest)("create trigger on_orders_change for DOCUMENT\n    before insert or update\nas\n  begin\n    new.last_order_update = CURRENT_TIMESTAMP;\n  end").catch(function (err) {
                     console.log("createTriger_err", err);
                 })];
             case 1:
                 res = _a.sent();
                 console.log("createTriger", res);
-                exports.saveTriggders();
+                (0, exports.saveTriggders)();
                 return [2];
         }
     });
@@ -181,21 +187,21 @@ var deleteTrigger = function () { return __awaiter(void 0, void 0, void 0, funct
     var res;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, exports.DbRequest("DROP trigger on_orders_change").catch(function (err) {
+            case 0: return [4, (0, exports.DbRequest)("DROP trigger on_orders_change").catch(function (err) {
                     console.log("createTriger_err", err);
                 })];
             case 1:
                 res = _a.sent();
                 console.log("res deleteTrigger", res);
-                exports.saveTriggders();
+                (0, exports.saveTriggders)();
                 return [2];
         }
     });
 }); };
 exports.deleteTrigger = deleteTrigger;
 var saveTriggders = function () {
-    exports.DbRequest("SELECT RDB$TRIGGER_NAME AS trigger_name,\n    RDB$RELATION_NAME AS table_name,\n    RDB$TRIGGER_SOURCE AS trigger_body,\n    CASE RDB$TRIGGER_TYPE\n     WHEN 1 THEN 'BEFORE'\n     WHEN 2 THEN 'AFTER'\n     WHEN 3 THEN 'BEFORE'\n     WHEN 4 THEN 'AFTER'\n     WHEN 5 THEN 'BEFORE'\n     WHEN 6 THEN 'AFTER'\n    END AS trigger_type,\n    CASE RDB$TRIGGER_TYPE\n     WHEN 1 THEN 'INSERT'\n     WHEN 2 THEN 'INSERT'\n     WHEN 3 THEN 'UPDATE'\n     WHEN 4 THEN 'UPDATE'\n     WHEN 5 THEN 'DELETE'\n     WHEN 6 THEN 'DELETE'\n    END AS trigger_event,\n    CASE RDB$TRIGGER_INACTIVE\n     WHEN 1 THEN 0 ELSE 1\n    END AS trigger_enabled,\n    RDB$DESCRIPTION AS trigger_comment\n    FROM RDB$TRIGGERS").then(function (res) {
-        exports.saveToFile("TRIGGERS", res);
+    (0, exports.DbRequest)("SELECT RDB$TRIGGER_NAME AS trigger_name,\n    RDB$RELATION_NAME AS table_name,\n    RDB$TRIGGER_SOURCE AS trigger_body,\n    CASE RDB$TRIGGER_TYPE\n     WHEN 1 THEN 'BEFORE'\n     WHEN 2 THEN 'AFTER'\n     WHEN 3 THEN 'BEFORE'\n     WHEN 4 THEN 'AFTER'\n     WHEN 5 THEN 'BEFORE'\n     WHEN 6 THEN 'AFTER'\n    END AS trigger_type,\n    CASE RDB$TRIGGER_TYPE\n     WHEN 1 THEN 'INSERT'\n     WHEN 2 THEN 'INSERT'\n     WHEN 3 THEN 'UPDATE'\n     WHEN 4 THEN 'UPDATE'\n     WHEN 5 THEN 'DELETE'\n     WHEN 6 THEN 'DELETE'\n    END AS trigger_event,\n    CASE RDB$TRIGGER_INACTIVE\n     WHEN 1 THEN 0 ELSE 1\n    END AS trigger_enabled,\n    RDB$DESCRIPTION AS trigger_comment\n    FROM RDB$TRIGGERS").then(function (res) {
+        (0, exports.saveToFile)("TRIGGERS", res);
     });
 };
 exports.saveTriggders = saveTriggders;
@@ -230,32 +236,62 @@ var saveAllCols = function () { return __awaiter(void 0, void 0, void 0, functio
     var cols;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, exports.getAllCols()];
+            case 0: return [4, (0, exports.getAllCols)()];
             case 1:
                 cols = _a.sent();
-                cols.forEach(function (colName) { return __awaiter(void 0, void 0, void 0, function () {
+                console.log("cols", cols);
+                cols.filter(function (col) {
+                    return col !== "PRINTFORM" &&
+                        col !== "GIFTCARDCOUNTER" &&
+                        col !== "COUPONTYPE" &&
+                        col !== "AIGS1" &&
+                        col !== "FMSYNCSTATE" &&
+                        col !== "TRANZTEXCISESTAMP" &&
+                        col !== "SERVICEDATA" &&
+                        col !== "OFDAGENTREQUISITES";
+                }).forEach(function (colName) { return __awaiter(void 0, void 0, void 0, function () {
                     var resCount, count, skip;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
-                            case 0: return [4, exports.DbRequest("SELECT count(*) FROM " + colName)];
+                            case 0:
+                                console.log("colName_", colName);
+                                return [4, (0, exports.DbRequest)("SELECT count(*) FROM ".concat(colName)).catch(function (err) {
+                                        console.log("resCount err", err);
+                                        return null;
+                                    })];
                             case 1:
                                 resCount = _a.sent();
+                                console.log("resCount", resCount);
+                                if (!resCount)
+                                    return [2];
                                 count = resCount[0].COUNT;
-                                skip = count > 10 ? count - 10 : 0;
-                                console.log("count " + colName, count);
-                                Firebird.attach(options, function (err, db) {
-                                    if (err)
-                                        throw err;
-                                    db.query("SELECT skip " + skip + " * FROM " + colName, function (err, result) {
+                                skip = 0;
+                                console.log("count ".concat(colName), count);
+                                try {
+                                    Firebird.attach(options, function (err, db) {
                                         if (err) {
                                             console.log("err", err);
+                                            return;
                                         }
-                                        if (result.length > 0) {
-                                            fs.writeFile("dbcol/" + colName + ".json", JSON.stringify(result, null, 2), null, function () { });
+                                        try {
+                                            db.query("SELECT skip ".concat(skip, " * FROM ").concat(colName), function (err, result) {
+                                                if (err) {
+                                                    console.log("err", err);
+                                                }
+                                                if (result.length > 0) {
+                                                    fs.writeFile("debug/dbcol/".concat(colName, ".json"), JSON.stringify(result, null, 2), null, function () { });
+                                                }
+                                                db.detach();
+                                            });
                                         }
-                                        db.detach();
+                                        catch (err) {
+                                            console.log("db.query err", err);
+                                        }
                                     });
-                                });
+                                }
+                                catch (err) {
+                                    console.log("err", err);
+                                }
                                 return [2];
                         }
                     });
@@ -265,6 +301,21 @@ var saveAllCols = function () { return __awaiter(void 0, void 0, void 0, functio
     });
 }); };
 exports.saveAllCols = saveAllCols;
+var isCardPayment = function (id) { return __awaiter(void 0, void 0, void 0, function () {
+    var items;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, (0, exports.DbRequest)("SELECT * FROM TRAUTH WHERE DOCUMENTID = ".concat(id))];
+            case 1:
+                items = _a.sent();
+                if (Array.isArray(items) && (items === null || items === void 0 ? void 0 : items.length) > 0) {
+                    return [2, true];
+                }
+                return [2, false];
+        }
+    });
+}); };
+exports.isCardPayment = isCardPayment;
 function sendEmail() {
     return __awaiter(this, void 0, void 0, function () {
         var transporter, info;

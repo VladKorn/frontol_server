@@ -61,6 +61,7 @@ declare module tables {
 		FULLPREPAYMENT: number;
 		LAST_ORDER_UPDATE: string;
 		products?: any;
+		isCardPayment?: boolean;
 	}
 }
 

@@ -1,4 +1,10 @@
-import { saveToFile, readFile, DbRequest, saveAllCols } from "./tools";
+import {
+	saveToFile,
+	readFile,
+	DbRequest,
+	saveAllCols,
+	isCardPayment,
+} from "./tools";
 global.fetch = require("node-fetch");
 // import Firebird from "node-firebird";
 // import fs from "fs";
@@ -18,8 +24,10 @@ export interface Product {
 export interface Order {
 	STATE: number;
 	ID: number;
+	// CHEQUENUMBER: number;
 	SUMM: number;
 	products: any[];
+	isCardPayment: boolean;
 }
 const clearEmptyOrders = (_orders: Order[]) => {
 	return _orders.filter((x) => x.SUMM > 0);
@@ -71,6 +79,8 @@ const prepareOrderData = (_orders: Orders) => {
 			ID: _order.ID,
 			SUMM: _order.SUMM,
 			products: products,
+			isCardPayment: _order.isCardPayment,
+			// CHEQUENUMBER: _order.CHEQUENUMBER,
 		});
 		// _item;
 	});
@@ -78,10 +88,14 @@ const prepareOrderData = (_orders: Orders) => {
 	return _data;
 };
 
-const getOrdersFromDate = async (date: string) => {
+export const getOrdersFromDate = async (date: string) => {
 	const orders = await DbRequest(
 		`SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
 	);
+
+	// @ts-ignore
+	console.log("getOrdersFromDate date orders.length", date, orders?.length);
+	saveToFile("orders_selected", orders);
 	return orders;
 };
 // getOrdersFromDate(`2020-11-01T22:00:00.000Z`);
@@ -99,56 +113,74 @@ const sendToSite = async (_data: Orders) => {
 	});
 	// .then(res => res.text()).then((res)=>{console.log("res" , res)});
 };
-
-const eventListener = async () => {
+const getState = async () => {
 	let state: any = await readFile("state");
-	console.log("state", state);
+	// console.log("state", state);
 	if (state.error || !state.lastTimeUpdate) {
 		const stateBackup: any = await readFile("stateBackup");
 		if (stateBackup.error) {
-			console.log("stateBackup state.error", stateBackup.error);
+			// console.log("stateBackup state.error", stateBackup.error);
 		} else {
-			console.log("stateBackup", stateBackup, stateBackup.lastTimeUpdate);
+			// console.log("stateBackup", stateBackup, stateBackup.lastTimeUpdate);
 			await saveToFile("state", stateBackup);
 			state = stateBackup;
 		}
 	}
 	console.log("initial state", state);
+	return state;
+};
+const checkOrdersUpdates = async () => {
+	const state = await getState();
 	let lastTimeUpdate = state.lastTimeUpdate;
-	// let lastTimeUpdate = `2020-11-11 20:30:09.7460`;
-	const checkOrdersUpdates = async () => {
-		const orders = (await getOrdersFromDate(
-			lastTimeUpdate
-		)) as Array<tables.RootObject>;
-		if (orders.length > 0) {
-			lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
-			await saveToFile("state", { lastTimeUpdate: lastTimeUpdate });
-			setTimeout(() => {
-				saveToFile("stateBackup", { lastTimeUpdate: lastTimeUpdate });
-			}, 10000);
+	console.log("lastTimeUpdate", lastTimeUpdate);
+	const orders = (await getOrdersFromDate(
+		lastTimeUpdate
+	)) as Array<tables.RootObject>;
+	if (orders.length > 0) {
+		// await saveToFile("__orders", orders);
+		// const _lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
+		const _lastTimeUpdate = orders.sort((x, z) => {
+			return (
+				// @ts-ignore
+				new Date(z.LAST_ORDER_UPDATE) - new Date(x.LAST_ORDER_UPDATE)
+			);
+		})[0].LAST_ORDER_UPDATE;
+		await saveToFile("state", { lastTimeUpdate: _lastTimeUpdate });
+		setTimeout(() => {
+			saveToFile("stateBackup", { lastTimeUpdate: _lastTimeUpdate });
+		}, 10000);
+		// console.log("_lastTimeUpdate", lastTimeUpdate, _lastTimeUpdate);
 
-			for (let i = 0; i < orders.length; i++) {
-				orders[i].products = await getProductsByOrderId(orders[i].ID);
+		for (let i = 0; i < orders.length; i++) {
+			console.log("eventListener order", orders[i].CHEQUENUMBER);
+			// if (orders[i].CHEQUENUMBER == 25761) {
+			// 	console.log("CHEQUENUMBER == 25761", orders[i]);
+			// } else {
+			// 	// return false;
+			// }
+			orders[i].products = await getProductsByOrderId(orders[i].ID);
+			orders[i].isCardPayment = await isCardPayment(orders[i].ID);
+		}
+		const _orders: Orders = [];
+		orders.forEach((_order) => {
+			if (_order.products.length > 0) {
+				_orders.push(_order);
 			}
-			const _orders: Orders = [];
-			orders.forEach((_order) => {
-				if (_order.products.length > 0) {
-					_orders.push(_order);
-				}
-			});
-			await saveToFile("orders", orders);
-			if (_orders.length > 0) {
-				return _orders;
-			} else {
-				return false;
-			}
+		});
+		await saveToFile("orders", orders);
+		if (_orders.length > 0) {
+			return _orders;
 		} else {
 			return false;
 		}
-	};
-	checkOrdersUpdates();
+	} else {
+		return false;
+	}
+};
+const eventListener = async () => {
+	// let lastTimeUpdate = `2020-11-11 20:30:09.7460`;
+	// checkOrdersUpdates();
 	setInterval(async () => {
-		console.log("lastTimeUpdate", lastTimeUpdate);
 		const changed_orders = await checkOrdersUpdates();
 		// saveToFile(`changed_orders`, changed_orders);
 		if (changed_orders) {
@@ -185,7 +217,8 @@ const getProductsByOrderId = async (orderId: number) => {
 		if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
 			// let product = await getProductByCode(item.WARECODE);
 			let product = {
-				price: item.SUMM,
+				priceBase: item.SUMM,
+				price: item.SUMMWD,
 				code: item.WARECODE,
 				quantity: item.QUANTITY,
 			};
