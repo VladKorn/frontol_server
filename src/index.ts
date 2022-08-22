@@ -24,7 +24,7 @@ export interface Product {
 export interface Order {
 	STATE: number;
 	ID: number;
-	// CHEQUENUMBER: number;
+	CHEQUENUMBER: number;
 	SUMM: number;
 	products: any[];
 	isCardPayment: boolean;
@@ -80,7 +80,7 @@ const prepareOrderData = (_orders: Orders) => {
 			SUMM: _order.SUMM,
 			products: products,
 			isCardPayment: _order.isCardPayment,
-			// CHEQUENUMBER: _order.CHEQUENUMBER,
+			CHEQUENUMBER: _order.CHEQUENUMBER,
 		});
 		// _item;
 	});
@@ -94,16 +94,16 @@ export const getOrdersFromDate = async (date: string) => {
 	);
 
 	// @ts-ignore
-	console.log("getOrdersFromDate date orders.length", date, orders?.length);
-	saveToFile("orders_selected", orders);
+	// console.log("getOrdersFromDate date orders.length", date, orders?.length);
+	// saveToFile("debug/orders_selected", orders);
 	return orders;
 };
 // getOrdersFromDate(`2020-11-01T22:00:00.000Z`);
 
 const sendToSite = async (_data: Orders) => {
-	saveToFile(`data`, _data);
+	saveToFile(`debug/data`, _data);
 	const data = prepareOrderData(_data);
-	saveToFile(`newData`, data);
+	saveToFile(`debug/newData`, data);
 	console.log("sendToSite", data.length);
 	const config: any = await readFile("config");
 
@@ -137,7 +137,7 @@ const checkOrdersUpdates = async () => {
 		lastTimeUpdate
 	)) as Array<tables.RootObject>;
 	if (orders.length > 0) {
-		// await saveToFile("__orders", orders);
+		// await saveToFile("debug/__orders", orders);
 		// const _lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
 		const _lastTimeUpdate = orders.sort((x, z) => {
 			return (
@@ -167,7 +167,7 @@ const checkOrdersUpdates = async () => {
 				_orders.push(_order);
 			}
 		});
-		await saveToFile("orders", orders);
+		// await saveToFile("debug/orders", orders);
 		if (_orders.length > 0) {
 			return _orders;
 		} else {
@@ -214,7 +214,12 @@ const getProductsByOrderId = async (orderId: number) => {
 		//@ts-ignore
 		let item = tranzt[i];
 		// console.log("tranzt item" , item);
-		if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
+		if (
+			item.WARECODE > 0 &&
+			item.SUMM &&
+			item.QUANTITY &&
+			item.TRANZTYPE !== 17
+		) {
 			// let product = await getProductByCode(item.WARECODE);
 			let product = {
 				priceBase: item.SUMM,
@@ -225,8 +230,6 @@ const getProductsByOrderId = async (orderId: number) => {
 			products.push(product);
 		}
 	}
-	// saveToFile("tranzt", tranzt);
-	// console.log(`getProductsByOrderId res`, products.length);
 
 	return products;
 

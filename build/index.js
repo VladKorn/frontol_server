@@ -83,6 +83,7 @@ var prepareOrderData = function (_orders) {
             SUMM: _order.SUMM,
             products: products,
             isCardPayment: _order.isCardPayment,
+            CHEQUENUMBER: _order.CHEQUENUMBER,
         });
     });
     var _data = clearEmptyOrders(data);
@@ -95,8 +96,6 @@ var getOrdersFromDate = function (date) { return __awaiter(void 0, void 0, void 
             case 0: return [4, (0, tools_1.DbRequest)("SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '".concat(date, "' ORDER BY last_order_update desc"))];
             case 1:
                 orders = _a.sent();
-                console.log("getOrdersFromDate date orders.length", date, orders === null || orders === void 0 ? void 0 : orders.length);
-                (0, tools_1.saveToFile)("orders_selected", orders);
                 return [2, orders];
         }
     });
@@ -107,9 +106,9 @@ var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, fun
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                (0, tools_1.saveToFile)("data", _data);
+                (0, tools_1.saveToFile)("debug/data", _data);
                 data = prepareOrderData(_data);
-                (0, tools_1.saveToFile)("newData", data);
+                (0, tools_1.saveToFile)("debug/newData", data);
                 console.log("sendToSite", data.length);
                 return [4, (0, tools_1.readFile)("config")];
             case 1:
@@ -158,7 +157,7 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                 return [4, (0, exports.getOrdersFromDate)(lastTimeUpdate)];
             case 2:
                 orders = (_c.sent());
-                if (!(orders.length > 0)) return [3, 10];
+                if (!(orders.length > 0)) return [3, 9];
                 _lastTimeUpdate_1 = orders.sort(function (x, z) {
                     return (new Date(z.LAST_ORDER_UPDATE) - new Date(x.LAST_ORDER_UPDATE));
                 })[0].LAST_ORDER_UPDATE;
@@ -192,18 +191,15 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                         _orders_1.push(_order);
                     }
                 });
-                return [4, (0, tools_1.saveToFile)("orders", orders)];
-            case 9:
-                _c.sent();
                 if (_orders_1.length > 0) {
                     return [2, _orders_1];
                 }
                 else {
                     return [2, false];
                 }
-                return [3, 11];
-            case 10: return [2, false];
-            case 11: return [2];
+                return [3, 10];
+            case 9: return [2, false];
+            case 10: return [2];
         }
     });
 }); };
@@ -254,7 +250,10 @@ var getProductsByOrderId = function (orderId) { return __awaiter(void 0, void 0,
                 products = [];
                 for (i = 0; i < tranzt.length; i++) {
                     item = tranzt[i];
-                    if (item.WARECODE > 0 && item.SUMM && item.QUANTITY) {
+                    if (item.WARECODE > 0 &&
+                        item.SUMM &&
+                        item.QUANTITY &&
+                        item.TRANZTYPE !== 17) {
                         product = {
                             priceBase: item.SUMM,
                             price: item.SUMMWD,
