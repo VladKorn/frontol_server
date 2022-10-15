@@ -50,29 +50,38 @@ options.lowercase_keys = false;
 options.role = null;
 options.pageSize = 4096;
 var DbRequest = function (query) { return __awaiter(void 0, void 0, void 0, function () {
+    var config;
     return __generator(this, function (_a) {
-        return [2, new Promise(function (resolve, reject) {
-                Firebird.attach(options, function (err, db) {
-                    if (err) {
-                        console.log("err", err);
-                        reject(err);
-                    }
-                    try {
-                        db.query(query, function (err, result) {
+        switch (_a.label) {
+            case 0: return [4, (0, exports.readFile)("config")];
+            case 1:
+                config = _a.sent();
+                if (config.database) {
+                    options.database = config.database;
+                }
+                return [2, new Promise(function (resolve, reject) {
+                        Firebird.attach(options, function (err, db) {
                             if (err) {
                                 console.log("err", err);
                                 reject(err);
                             }
-                            resolve(result);
-                            db.detach();
+                            try {
+                                db.query(query, function (err, result) {
+                                    if (err) {
+                                        console.log("err", err);
+                                        reject(err);
+                                    }
+                                    resolve(result);
+                                    db.detach();
+                                });
+                            }
+                            catch (err) {
+                                console.log("err", err);
+                                reject(err);
+                            }
                         });
-                    }
-                    catch (err) {
-                        console.log("err", err);
-                        reject(err);
-                    }
-                });
-            })];
+                    })];
+        }
     });
 }); };
 exports.DbRequest = DbRequest;

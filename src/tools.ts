@@ -19,6 +19,10 @@ options.pageSize = 4096; // default when creating database
 // options.pageSize = 10; // default when creating database
 
 export const DbRequest = async (query: string) => {
+	const config: any = await readFile("config");
+	if (config.database) {
+		options.database = config.database;
+	}
 	return new Promise((resolve, reject) => {
 		Firebird.attach(options, function (err: any, db: any) {
 			// console.log("existsSync", fs.existsSync(options.database));

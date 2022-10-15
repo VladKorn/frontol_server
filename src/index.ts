@@ -28,12 +28,20 @@ export interface Order {
 	SUMM: number;
 	products: any[];
 	isCardPayment: boolean;
+	lastOrderUpdate: string;
 }
+const innerState = {
+	eventListenerinProgress: false,
+	checkOrdersUpdatesInProgress: false,
+	isFirstStart: true,
+};
+
 const clearEmptyOrders = (_orders: Order[]) => {
 	return _orders.filter((x) => x.SUMM > 0);
 };
 export const clearRemovedProducts = (_products: Product[]) => {
 	const removedProds = _products.filter((x) => x.price < 0);
+	let removerdProductsCount = removedProds.length;
 	// console.log("order.products", order.products);
 	// console.log("removedProds", removedProds);
 
@@ -47,7 +55,10 @@ export const clearRemovedProducts = (_products: Product[]) => {
 				prod.code === x.code &&
 				prod.quantity === -x.quantity
 			)
-				isRemovedProd = true;
+				if (removerdProductsCount > 0) {
+					isRemovedProd = true;
+					removerdProductsCount = removerdProductsCount - 1;
+				}
 		});
 		if (isRemovedProd) return false;
 
@@ -67,12 +78,23 @@ const prepareOrderData = (_orders: Orders) => {
 				needRemove = true;
 			}
 		});
-
+		// if (_order.CHEQUENUMBER == 34828) {
+		// 	console.log(
+		// 		"prepareOrderData _order.CHEQUENUMBER == 34828 products before",
+		// 		_order.products
+		// 	);
+		// }
 		if (needRemove) {
 			products = clearRemovedProducts(_order.products);
 		} else {
 			products = _order.products;
 		}
+		// if (_order.CHEQUENUMBER == 34828) {
+		// 	console.log(
+		// 		"prepareOrderData _order.CHEQUENUMBER == 34828 products after clearRemovedProducts",
+		// 		products
+		// 	);
+		// }
 
 		data.push({
 			STATE: _order.STATE,
@@ -81,6 +103,7 @@ const prepareOrderData = (_orders: Orders) => {
 			products: products,
 			isCardPayment: _order.isCardPayment,
 			CHEQUENUMBER: _order.CHEQUENUMBER,
+			lastOrderUpdate: _order.LAST_ORDER_UPDATE,
 		});
 		// _item;
 	});
@@ -89,12 +112,16 @@ const prepareOrderData = (_orders: Orders) => {
 };
 
 export const getOrdersFromDate = async (date: string) => {
-	const orders = await DbRequest(
-		`SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
+	const orders: any = await DbRequest(
+		`SELECT first 10000 * FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '${date}' ORDER BY last_order_update desc`
 	);
-
-	// @ts-ignore
-	// console.log("getOrdersFromDate date orders.length", date, orders?.length);
+	if (orders) {
+		console.log(
+			"getOrdersFromDate date orders.length",
+			date,
+			orders?.length
+		);
+	}
 	// saveToFile("debug/orders_selected", orders);
 	return orders;
 };
@@ -107,7 +134,7 @@ const sendToSite = async (_data: Orders) => {
 	console.log("sendToSite", data.length);
 	const config: any = await readFile("config");
 
-	fetch(`https://admin.magday.ru/frontol/order.php`, {
+	return fetch(`https://admin.magday.ru/frontol/order.php`, {
 		method: "post",
 		body: JSON.stringify({ orders: data, userId: config.userId }),
 	});
@@ -127,15 +154,50 @@ const getState = async () => {
 		}
 	}
 	console.log("initial state", state);
+	if (innerState.isFirstStart) {
+		const date = new Date(state.lastTimeUpdate);
+		let dayNow: any = date.getDate();
+		if (dayNow < 10) {
+			dayNow = "0" + dayNow;
+		}
+		let monthNow: any = date.getMonth() + 1;
+		if (monthNow < 10) {
+			monthNow = "0" + monthNow;
+		}
+		date.setDate(date.getDate() - 1);
+		let day: any = date.getDate();
+		if (day < 10) {
+			day = "0" + day;
+		}
+		let month: any = date.getMonth() + 1;
+		if (month < 10) {
+			month = "0" + month;
+		}
+		state.lastTimeUpdate = state.lastTimeUpdate
+			.replace(`-${monthNow}-`, `-${month}-`)
+			.replace(`-${dayNow} `, `-${day} `);
+		console.log("initial state - isFirstStart", state);
+		innerState.isFirstStart = false;
+	}
+
 	return state;
+};
+
+const checkOrdersUpdatesOnce = async () => {
+	if (innerState.checkOrdersUpdatesInProgress) return false;
+	innerState.checkOrdersUpdatesInProgress = true;
+	const res = await checkOrdersUpdates();
+	innerState.checkOrdersUpdatesInProgress = false;
+	return res;
 };
 const checkOrdersUpdates = async () => {
 	const state = await getState();
 	let lastTimeUpdate = state.lastTimeUpdate;
 	console.log("lastTimeUpdate", lastTimeUpdate);
-	const orders = (await getOrdersFromDate(
-		lastTimeUpdate
-	)) as Array<tables.RootObject>;
+	const orders = (await getOrdersFromDate(lastTimeUpdate)) as
+		| Array<tables.RootObject>
+		| false;
+	if (orders === false) return;
 	if (orders.length > 0) {
 		// await saveToFile("debug/__orders", orders);
 		// const _lastTimeUpdate = orders[orders.length - 1].LAST_ORDER_UPDATE;
@@ -153,13 +215,11 @@ const checkOrdersUpdates = async () => {
 
 		for (let i = 0; i < orders.length; i++) {
 			console.log("eventListener order", orders[i].CHEQUENUMBER);
-			// if (orders[i].CHEQUENUMBER == 25761) {
-			// 	console.log("CHEQUENUMBER == 25761", orders[i]);
-			// } else {
-			// 	// return false;
-			// }
 			orders[i].products = await getProductsByOrderId(orders[i].ID);
 			orders[i].isCardPayment = await isCardPayment(orders[i].ID);
+			// if (orders[i].CHEQUENUMBER == 34828) {
+			// 	console.log("CHEQUENUMBER == 34828", orders[i]);
+			// }
 		}
 		const _orders: Orders = [];
 		orders.forEach((_order) => {
@@ -181,11 +241,30 @@ const eventListener = async () => {
 	// let lastTimeUpdate = `2020-11-11 20:30:09.7460`;
 	// checkOrdersUpdates();
 	setInterval(async () => {
-		const changed_orders = await checkOrdersUpdates();
+		if (innerState.eventListenerinProgress) return;
+		if (innerState.checkOrdersUpdatesInProgress) return;
+		console.log("eventListener setInterval !eventListenerinProgress");
+		const changed_orders = await checkOrdersUpdatesOnce();
+		if (!changed_orders) return;
 		// saveToFile(`changed_orders`, changed_orders);
-		if (changed_orders) {
-			sendToSite(changed_orders);
+		innerState.eventListenerinProgress = true;
+		const step = 50;
+		for (
+			let index = 0;
+			index < changed_orders.length;
+			index = index + step
+		) {
+			console.log(
+				`eventListener sendToSite ${index} / ${index + step} of ${
+					changed_orders.length
+				}`
+			);
+			const res = await sendToSite(
+				changed_orders.slice(index, index + step)
+			);
+			console.log(`sendToSite res.statusText`, res.statusText);
 		}
+		innerState.eventListenerinProgress = false;
 		// console.log(changed_orders);
 	}, 5000);
 };

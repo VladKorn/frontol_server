@@ -36,25 +36,9 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var tools_1 = require("./tools");
 (function () { return __awaiter(void 0, void 0, void 0, function () {
-    var TRANZT, DOCUMENT, items1, items2;
     return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4, (0, tools_1.readFile)("debug/dbcol/TRANZT")];
-            case 1:
-                TRANZT = _a.sent();
-                return [4, (0, tools_1.readFile)("debug/dbcol/DOCUMENT")];
-            case 2:
-                DOCUMENT = _a.sent();
-                items1 = DOCUMENT.filter(function (x) { return x.ID === 309202; });
-                items2 = TRANZT.filter(function (x) { return x.DOCUMENTID === 309202; });
-                console.log("items1", items1 === null || items1 === void 0 ? void 0 : items1.length);
-                console.log("items2", items2 === null || items2 === void 0 ? void 0 : items2.length);
-                (0, tools_1.saveToFile)("debug/DOCUMENT_items", items1);
-                (0, tools_1.saveToFile)("debug/TRANZT_items", items2);
-                return [2];
-        }
+        return [2];
     });
 }); })();
 //# sourceMappingURL=debug.js.map

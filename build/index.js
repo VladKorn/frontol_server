@@ -39,11 +39,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOrdersFromDate = exports.clearRemovedProducts = void 0;
 var tools_1 = require("./tools");
 global.fetch = require("node-fetch");
+var innerState = {
+    eventListenerinProgress: false,
+    checkOrdersUpdatesInProgress: false,
+    isFirstStart: true,
+};
 var clearEmptyOrders = function (_orders) {
     return _orders.filter(function (x) { return x.SUMM > 0; });
 };
 var clearRemovedProducts = function (_products) {
     var removedProds = _products.filter(function (x) { return x.price < 0; });
+    var removerdProductsCount = removedProds.length;
     var prods = _products.filter(function (prod) {
         if (prod.price < 0)
             return false;
@@ -52,7 +58,10 @@ var clearRemovedProducts = function (_products) {
             if (prod.price === -x.price &&
                 prod.code === x.code &&
                 prod.quantity === -x.quantity)
-                isRemovedProd = true;
+                if (removerdProductsCount > 0) {
+                    isRemovedProd = true;
+                    removerdProductsCount = removerdProductsCount - 1;
+                }
         });
         if (isRemovedProd)
             return false;
@@ -84,6 +93,7 @@ var prepareOrderData = function (_orders) {
             products: products,
             isCardPayment: _order.isCardPayment,
             CHEQUENUMBER: _order.CHEQUENUMBER,
+            lastOrderUpdate: _order.LAST_ORDER_UPDATE,
         });
     });
     var _data = clearEmptyOrders(data);
@@ -93,9 +103,12 @@ var getOrdersFromDate = function (date) { return __awaiter(void 0, void 0, void 
     var orders;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4, (0, tools_1.DbRequest)("SELECT first 50* FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '".concat(date, "' ORDER BY last_order_update desc"))];
+            case 0: return [4, (0, tools_1.DbRequest)("SELECT first 10000 * FROM DOCUMENT WHERE STATE = 1 AND last_order_update > '".concat(date, "' ORDER BY last_order_update desc"))];
             case 1:
                 orders = _a.sent();
+                if (orders) {
+                    console.log("getOrdersFromDate date orders.length", date, orders === null || orders === void 0 ? void 0 : orders.length);
+                }
                 return [2, orders];
         }
     });
@@ -113,16 +126,15 @@ var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, fun
                 return [4, (0, tools_1.readFile)("config")];
             case 1:
                 config = _a.sent();
-                fetch("https://admin.magday.ru/frontol/order.php", {
-                    method: "post",
-                    body: JSON.stringify({ orders: data, userId: config.userId }),
-                });
-                return [2];
+                return [2, fetch("https://admin.magday.ru/frontol/order.php", {
+                        method: "post",
+                        body: JSON.stringify({ orders: data, userId: config.userId }),
+                    })];
         }
     });
 }); };
 var getState = function () { return __awaiter(void 0, void 0, void 0, function () {
-    var state, stateBackup;
+    var state, stateBackup, date, dayNow, monthNow, day, month;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, (0, tools_1.readFile)("state")];
@@ -141,7 +153,48 @@ var getState = function () { return __awaiter(void 0, void 0, void 0, function (
                 _a.label = 5;
             case 5:
                 console.log("initial state", state);
+                if (innerState.isFirstStart) {
+                    date = new Date(state.lastTimeUpdate);
+                    dayNow = date.getDate();
+                    if (dayNow < 10) {
+                        dayNow = "0" + dayNow;
+                    }
+                    monthNow = date.getMonth() + 1;
+                    if (monthNow < 10) {
+                        monthNow = "0" + monthNow;
+                    }
+                    date.setDate(date.getDate() - 1);
+                    day = date.getDate();
+                    if (day < 10) {
+                        day = "0" + day;
+                    }
+                    month = date.getMonth() + 1;
+                    if (month < 10) {
+                        month = "0" + month;
+                    }
+                    state.lastTimeUpdate = state.lastTimeUpdate
+                        .replace("-".concat(monthNow, "-"), "-".concat(month, "-"))
+                        .replace("-".concat(dayNow, " "), "-".concat(day, " "));
+                    console.log("initial state - isFirstStart", state);
+                    innerState.isFirstStart = false;
+                }
                 return [2, state];
+        }
+    });
+}); };
+var checkOrdersUpdatesOnce = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var res;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                if (innerState.checkOrdersUpdatesInProgress)
+                    return [2, false];
+                innerState.checkOrdersUpdatesInProgress = true;
+                return [4, checkOrdersUpdates()];
+            case 1:
+                res = _a.sent();
+                innerState.checkOrdersUpdatesInProgress = false;
+                return [2, res];
         }
     });
 }); };
@@ -157,6 +210,8 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                 return [4, (0, exports.getOrdersFromDate)(lastTimeUpdate)];
             case 2:
                 orders = (_c.sent());
+                if (orders === false)
+                    return [2];
                 if (!(orders.length > 0)) return [3, 9];
                 _lastTimeUpdate_1 = orders.sort(function (x, z) {
                     return (new Date(z.LAST_ORDER_UPDATE) - new Date(x.LAST_ORDER_UPDATE));
@@ -206,15 +261,37 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
 var eventListener = function () { return __awaiter(void 0, void 0, void 0, function () {
     return __generator(this, function (_a) {
         setInterval(function () { return __awaiter(void 0, void 0, void 0, function () {
-            var changed_orders;
+            var changed_orders, step, index, res;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4, checkOrdersUpdates()];
+                    case 0:
+                        if (innerState.eventListenerinProgress)
+                            return [2];
+                        if (innerState.checkOrdersUpdatesInProgress)
+                            return [2];
+                        console.log("eventListener setInterval !eventListenerinProgress");
+                        return [4, checkOrdersUpdatesOnce()];
                     case 1:
                         changed_orders = _a.sent();
-                        if (changed_orders) {
-                            sendToSite(changed_orders);
-                        }
+                        if (!changed_orders)
+                            return [2];
+                        innerState.eventListenerinProgress = true;
+                        step = 50;
+                        index = 0;
+                        _a.label = 2;
+                    case 2:
+                        if (!(index < changed_orders.length)) return [3, 5];
+                        console.log("eventListener sendToSite ".concat(index, " / ").concat(index + step, " of ").concat(changed_orders.length));
+                        return [4, sendToSite(changed_orders.slice(index, index + step))];
+                    case 3:
+                        res = _a.sent();
+                        console.log("sendToSite res.statusText", res.statusText);
+                        _a.label = 4;
+                    case 4:
+                        index = index + step;
+                        return [3, 2];
+                    case 5:
+                        innerState.eventListenerinProgress = false;
                         return [2];
                 }
             });
