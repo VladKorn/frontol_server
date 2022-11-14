@@ -1,3 +1,4 @@
+import { version } from "os";
 import {
 	saveToFile,
 	readFile,
@@ -22,7 +23,7 @@ export interface Product {
 	quantity: number;
 }
 export interface Order {
-	STATE: number;
+	STATE: number | "cancelled";
 	ID: number;
 	CHEQUENUMBER: number;
 	SUMM: number;
@@ -38,6 +39,9 @@ const innerState = {
 
 const clearEmptyOrders = (_orders: Order[]) => {
 	return _orders.filter((x) => x.SUMM > 0);
+};
+const isOrderCancel = (_products: Product[]) => {
+	return _products.every((x) => x.price < 0);
 };
 export const clearRemovedProducts = (_products: Product[]) => {
 	const removedProds = _products.filter((x) => x.price < 0);
@@ -67,9 +71,29 @@ export const clearRemovedProducts = (_products: Product[]) => {
 	return prods;
 };
 
-const prepareOrderData = (_orders: Orders) => {
+const prepareOrderData = async (_orders: Orders) => {
 	const data: Order[] = [];
-	_orders.forEach((_order) => {
+	const cancelledOrders: Order[] = [];
+	for (let index = 0; index < _orders.length; index++) {
+		const _order = _orders[index];
+		if (isOrderCancel(_order.products)) {
+			const id = _order.DOCUMENTID; //id of cancelled order
+			// console.log("isOrderCancel", _order);
+			const order = await getOrder(id);
+			// console.log("cancelled order", order);
+			if (!order) continue;
+			cancelledOrders.push({
+				STATE: "cancelled",
+				ID: order.ID,
+				SUMM: order.SUMM,
+				products: order.products,
+				isCardPayment: order.isCardPayment,
+				CHEQUENUMBER: order.CHEQUENUMBER,
+				lastOrderUpdate: order.LAST_ORDER_UPDATE,
+			});
+			continue;
+		}
+
 		let products: Product[] = [];
 
 		let needRemove = false;
@@ -78,9 +102,9 @@ const prepareOrderData = (_orders: Orders) => {
 				needRemove = true;
 			}
 		});
-		// if (_order.CHEQUENUMBER == 34828) {
+		// if (_order.CHEQUENUMBER == 7528) {
 		// 	console.log(
-		// 		"prepareOrderData _order.CHEQUENUMBER == 34828 products before",
+		// 		"prepareOrderData _order.CHEQUENUMBER == 7528 products before",
 		// 		_order.products
 		// 	);
 		// }
@@ -89,9 +113,9 @@ const prepareOrderData = (_orders: Orders) => {
 		} else {
 			products = _order.products;
 		}
-		// if (_order.CHEQUENUMBER == 34828) {
+		// if (_order.CHEQUENUMBER == 7528) {
 		// 	console.log(
-		// 		"prepareOrderData _order.CHEQUENUMBER == 34828 products after clearRemovedProducts",
+		// 		"prepareOrderData _order.CHEQUENUMBER == 7528 products after clearRemovedProducts",
 		// 		products
 		// 	);
 		// }
@@ -105,10 +129,23 @@ const prepareOrderData = (_orders: Orders) => {
 			CHEQUENUMBER: _order.CHEQUENUMBER,
 			lastOrderUpdate: _order.LAST_ORDER_UPDATE,
 		});
-		// _item;
-	});
+	} //end for
+
+	// _item;
 	const _data = clearEmptyOrders(data);
-	return _data;
+	return [..._data, ...cancelledOrders];
+};
+
+export const getOrder = async (id: number) => {
+	const orders: tables.RootObject[] = (await DbRequest(
+		`SELECT * FROM DOCUMENT WHERE id = '${id}'`
+	)) as tables.RootObject[];
+	if (!orders.length) {
+		return false;
+	}
+	console.log("getOrder id order", id, orders[0]);
+	// saveToFile("debug/orders_selected", orders);
+	return orders[0];
 };
 
 export const getOrdersFromDate = async (date: string) => {
@@ -129,12 +166,17 @@ export const getOrdersFromDate = async (date: string) => {
 
 const sendToSite = async (_data: Orders) => {
 	saveToFile(`debug/data`, _data);
-	const data = prepareOrderData(_data);
+	const data = await prepareOrderData(_data);
 	saveToFile(`debug/newData`, data);
 	console.log("sendToSite", data.length);
 	const config: any = await readFile("config");
 
-	return fetch(`https://admin.magday.ru/frontol/order.php`, {
+	console.log(
+		"sendToSite test",
+		data.filter((x) => x.STATE === "cancelled")
+	);
+
+	return fetch(`https://admin.yatakem.ru/frontol/order.php`, {
 		method: "post",
 		body: JSON.stringify({ orders: data, userId: config.userId }),
 	});
@@ -217,9 +259,9 @@ const checkOrdersUpdates = async () => {
 			console.log("eventListener order", orders[i].CHEQUENUMBER);
 			orders[i].products = await getProductsByOrderId(orders[i].ID);
 			orders[i].isCardPayment = await isCardPayment(orders[i].ID);
-			// if (orders[i].CHEQUENUMBER == 34828) {
-			// 	console.log("CHEQUENUMBER == 34828", orders[i]);
-			// }
+			if (orders[i].CHEQUENUMBER == 7528) {
+				console.log("CHEQUENUMBER == 7528", orders[i]);
+			}
 		}
 		const _orders: Orders = [];
 		orders.forEach((_order) => {
@@ -255,21 +297,26 @@ const eventListener = async () => {
 			index = index + step
 		) {
 			console.log(
-				`eventListener sendToSite ${index} / ${index + step} of ${
-					changed_orders.length
-				}`
+				`eventListener sendToSite ${index} of ${
+					changed_orders.length > index + step
+						? index + step
+						: changed_orders.length
+				} / ${changed_orders.length}`
 			);
 			const res = await sendToSite(
 				changed_orders.slice(index, index + step)
 			);
-			console.log(`sendToSite res.statusText`, res.statusText);
+			// console.log(`sendToSite res.statusText`, res.statusText);
 		}
 		innerState.eventListenerinProgress = false;
 		// console.log(changed_orders);
 	}, 5000);
 };
-
-eventListener();
+const main = () => {
+	console.log(`version:1.8.7`);
+	eventListener();
+};
+main();
 const getProductByCode = async (code: number) => {
 	const product = await DbRequest(`SELECT * FROM SPRT WHERE CODE = ${code}`);
 	if (Array.isArray(product)) {

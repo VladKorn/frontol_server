@@ -35,8 +35,17 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
+var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
+    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
+        if (ar || !(i in from)) {
+            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
+            ar[i] = from[i];
+        }
+    }
+    return to.concat(ar || Array.prototype.slice.call(from));
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOrdersFromDate = exports.clearRemovedProducts = void 0;
+exports.getOrdersFromDate = exports.getOrder = exports.clearRemovedProducts = void 0;
 var tools_1 = require("./tools");
 global.fetch = require("node-fetch");
 var innerState = {
@@ -46,6 +55,9 @@ var innerState = {
 };
 var clearEmptyOrders = function (_orders) {
     return _orders.filter(function (x) { return x.SUMM > 0; });
+};
+var isOrderCancel = function (_products) {
+    return _products.every(function (x) { return x.price < 0; });
 };
 var clearRemovedProducts = function (_products) {
     var removedProds = _products.filter(function (x) { return x.price < 0; });
@@ -70,35 +82,96 @@ var clearRemovedProducts = function (_products) {
     return prods;
 };
 exports.clearRemovedProducts = clearRemovedProducts;
-var prepareOrderData = function (_orders) {
-    var data = [];
-    _orders.forEach(function (_order) {
-        var products = [];
-        var needRemove = false;
-        _order.products.forEach(function (prod) {
-            if (prod.price < 0) {
-                needRemove = true;
-            }
-        });
-        if (needRemove) {
-            products = (0, exports.clearRemovedProducts)(_order.products);
+var prepareOrderData = function (_orders) { return __awaiter(void 0, void 0, void 0, function () {
+    var data, cancelledOrders, _loop_1, index, _data;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                data = [];
+                cancelledOrders = [];
+                _loop_1 = function (index) {
+                    var _order, id, order, products, needRemove;
+                    return __generator(this, function (_b) {
+                        switch (_b.label) {
+                            case 0:
+                                _order = _orders[index];
+                                if (!isOrderCancel(_order.products)) return [3, 2];
+                                id = _order.DOCUMENTID;
+                                return [4, (0, exports.getOrder)(id)];
+                            case 1:
+                                order = _b.sent();
+                                if (!order)
+                                    return [2, "continue"];
+                                cancelledOrders.push({
+                                    STATE: "cancelled",
+                                    ID: order.ID,
+                                    SUMM: order.SUMM,
+                                    products: order.products,
+                                    isCardPayment: order.isCardPayment,
+                                    CHEQUENUMBER: order.CHEQUENUMBER,
+                                    lastOrderUpdate: order.LAST_ORDER_UPDATE,
+                                });
+                                return [2, "continue"];
+                            case 2:
+                                products = [];
+                                needRemove = false;
+                                _order.products.forEach(function (prod) {
+                                    if (prod.price < 0) {
+                                        needRemove = true;
+                                    }
+                                });
+                                if (needRemove) {
+                                    products = (0, exports.clearRemovedProducts)(_order.products);
+                                }
+                                else {
+                                    products = _order.products;
+                                }
+                                data.push({
+                                    STATE: _order.STATE,
+                                    ID: _order.ID,
+                                    SUMM: _order.SUMM,
+                                    products: products,
+                                    isCardPayment: _order.isCardPayment,
+                                    CHEQUENUMBER: _order.CHEQUENUMBER,
+                                    lastOrderUpdate: _order.LAST_ORDER_UPDATE,
+                                });
+                                return [2];
+                        }
+                    });
+                };
+                index = 0;
+                _a.label = 1;
+            case 1:
+                if (!(index < _orders.length)) return [3, 4];
+                return [5, _loop_1(index)];
+            case 2:
+                _a.sent();
+                _a.label = 3;
+            case 3:
+                index++;
+                return [3, 1];
+            case 4:
+                _data = clearEmptyOrders(data);
+                return [2, __spreadArray(__spreadArray([], _data, true), cancelledOrders, true)];
         }
-        else {
-            products = _order.products;
-        }
-        data.push({
-            STATE: _order.STATE,
-            ID: _order.ID,
-            SUMM: _order.SUMM,
-            products: products,
-            isCardPayment: _order.isCardPayment,
-            CHEQUENUMBER: _order.CHEQUENUMBER,
-            lastOrderUpdate: _order.LAST_ORDER_UPDATE,
-        });
     });
-    var _data = clearEmptyOrders(data);
-    return _data;
-};
+}); };
+var getOrder = function (id) { return __awaiter(void 0, void 0, void 0, function () {
+    var orders;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4, (0, tools_1.DbRequest)("SELECT * FROM DOCUMENT WHERE id = '".concat(id, "'"))];
+            case 1:
+                orders = (_a.sent());
+                if (!orders.length) {
+                    return [2, false];
+                }
+                console.log("getOrder id order", id, orders[0]);
+                return [2, orders[0]];
+        }
+    });
+}); };
+exports.getOrder = getOrder;
 var getOrdersFromDate = function (date) { return __awaiter(void 0, void 0, void 0, function () {
     var orders;
     return __generator(this, function (_a) {
@@ -120,13 +193,16 @@ var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, fun
         switch (_a.label) {
             case 0:
                 (0, tools_1.saveToFile)("debug/data", _data);
-                data = prepareOrderData(_data);
+                return [4, prepareOrderData(_data)];
+            case 1:
+                data = _a.sent();
                 (0, tools_1.saveToFile)("debug/newData", data);
                 console.log("sendToSite", data.length);
                 return [4, (0, tools_1.readFile)("config")];
-            case 1:
+            case 2:
                 config = _a.sent();
-                return [2, fetch("https://admin.magday.ru/frontol/order.php", {
+                console.log("sendToSite test", data.filter(function (x) { return x.STATE === "cancelled"; }));
+                return [2, fetch("https://admin.yatakem.ru/frontol/order.php", {
                         method: "post",
                         body: JSON.stringify({ orders: data, userId: config.userId }),
                     })];
@@ -235,6 +311,9 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                 return [4, (0, tools_1.isCardPayment)(orders[i].ID)];
             case 6:
                 _b.isCardPayment = _c.sent();
+                if (orders[i].CHEQUENUMBER == 7528) {
+                    console.log("CHEQUENUMBER == 7528", orders[i]);
+                }
                 _c.label = 7;
             case 7:
                 i++;
@@ -281,11 +360,12 @@ var eventListener = function () { return __awaiter(void 0, void 0, void 0, funct
                         _a.label = 2;
                     case 2:
                         if (!(index < changed_orders.length)) return [3, 5];
-                        console.log("eventListener sendToSite ".concat(index, " / ").concat(index + step, " of ").concat(changed_orders.length));
+                        console.log("eventListener sendToSite ".concat(index, " of ").concat(changed_orders.length > index + step
+                            ? index + step
+                            : changed_orders.length, " / ").concat(changed_orders.length));
                         return [4, sendToSite(changed_orders.slice(index, index + step))];
                     case 3:
                         res = _a.sent();
-                        console.log("sendToSite res.statusText", res.statusText);
                         _a.label = 4;
                     case 4:
                         index = index + step;
@@ -299,7 +379,11 @@ var eventListener = function () { return __awaiter(void 0, void 0, void 0, funct
         return [2];
     });
 }); };
-eventListener();
+var main = function () {
+    console.log("version:1.8.7");
+    eventListener();
+};
+main();
 var getProductByCode = function (code) { return __awaiter(void 0, void 0, void 0, function () {
     var product;
     return __generator(this, function (_a) {
