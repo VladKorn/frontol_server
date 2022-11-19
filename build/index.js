@@ -48,6 +48,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getOrdersFromDate = exports.getOrder = exports.clearRemovedProducts = void 0;
 var tools_1 = require("./tools");
 global.fetch = require("node-fetch");
+var debug = false;
 var innerState = {
     eventListenerinProgress: false,
     checkOrdersUpdatesInProgress: false,
@@ -60,26 +61,30 @@ var isOrderCancel = function (_products) {
     return _products.every(function (x) { return x.price < 0; });
 };
 var clearRemovedProducts = function (_products) {
-    var removedProds = _products.filter(function (x) { return x.price < 0; });
-    var removerdProductsCount = removedProds.length;
-    var prods = _products.filter(function (prod) {
-        if (prod.price < 0)
-            return false;
-        var isRemovedProd = false;
-        removedProds.forEach(function (x) {
-            if (prod.price === -x.price &&
-                prod.code === x.code &&
-                prod.quantity === -x.quantity)
-                if (removerdProductsCount > 0) {
-                    isRemovedProd = true;
-                    removerdProductsCount = removerdProductsCount - 1;
-                }
-        });
-        if (isRemovedProd)
-            return false;
-        return true;
+    if (debug)
+        (0, tools_1.saveToFile)("debug/clearRemovedProducts__products", _products);
+    var productsByCode = {};
+    _products.forEach(function (prod) {
+        if (!productsByCode[prod.code])
+            productsByCode[prod.code] = [];
+        productsByCode[prod.code].push(prod);
     });
-    return prods;
+    var products = [];
+    Object.keys(productsByCode).forEach(function (key) {
+        var prods = productsByCode[parseInt(key)];
+        var product = {
+            code: prods[0].code,
+            price: prods.reduce(function (accumulator, prod) { return accumulator + prod.price; }, 0),
+            priceBase: prods.reduce(function (accumulator, prod) { return accumulator + prod.priceBase; }, 0),
+            quantity: prods.reduce(function (accumulator, prod) { return accumulator + prod.quantity; }, 0),
+        };
+        if (product.price > 0) {
+            products.push(product);
+        }
+    });
+    if (debug)
+        (0, tools_1.saveToFile)("debug/clearRemovedProducts_products", products);
+    return products;
 };
 exports.clearRemovedProducts = clearRemovedProducts;
 var prepareOrderData = function (_orders) { return __awaiter(void 0, void 0, void 0, function () {
@@ -106,6 +111,7 @@ var prepareOrderData = function (_orders) { return __awaiter(void 0, void 0, voi
                                     STATE: "cancelled",
                                     ID: order.ID,
                                     SUMM: order.SUMM,
+                                    SUMMWD: order.SUMMWD,
                                     products: order.products,
                                     isCardPayment: order.isCardPayment,
                                     CHEQUENUMBER: order.CHEQUENUMBER,
@@ -130,6 +136,7 @@ var prepareOrderData = function (_orders) { return __awaiter(void 0, void 0, voi
                                     STATE: _order.STATE,
                                     ID: _order.ID,
                                     SUMM: _order.SUMM,
+                                    SUMMWD: _order.SUMMWD,
                                     products: products,
                                     isCardPayment: _order.isCardPayment,
                                     CHEQUENUMBER: _order.CHEQUENUMBER,
@@ -192,11 +199,11 @@ var sendToSite = function (_data) { return __awaiter(void 0, void 0, void 0, fun
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                (0, tools_1.saveToFile)("debug/data", _data);
+                if (debug)
+                    (0, tools_1.saveToFile)("debug/data", _data);
                 return [4, prepareOrderData(_data)];
             case 1:
                 data = _a.sent();
-                (0, tools_1.saveToFile)("debug/newData", data);
                 console.log("sendToSite", data.length);
                 return [4, (0, tools_1.readFile)("config")];
             case 2:
@@ -288,7 +295,7 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                 orders = (_c.sent());
                 if (orders === false)
                     return [2];
-                if (!(orders.length > 0)) return [3, 9];
+                if (!(orders.length > 0)) return [3, 10];
                 _lastTimeUpdate_1 = orders.sort(function (x, z) {
                     return (new Date(z.LAST_ORDER_UPDATE) - new Date(x.LAST_ORDER_UPDATE));
                 })[0].LAST_ORDER_UPDATE;
@@ -311,9 +318,6 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                 return [4, (0, tools_1.isCardPayment)(orders[i].ID)];
             case 6:
                 _b.isCardPayment = _c.sent();
-                if (orders[i].CHEQUENUMBER == 7528) {
-                    console.log("CHEQUENUMBER == 7528", orders[i]);
-                }
                 _c.label = 7;
             case 7:
                 i++;
@@ -325,15 +329,18 @@ var checkOrdersUpdates = function () { return __awaiter(void 0, void 0, void 0, 
                         _orders_1.push(_order);
                     }
                 });
+                return [4, (0, tools_1.saveToFile)("debug/orders", orders)];
+            case 9:
+                _c.sent();
                 if (_orders_1.length > 0) {
                     return [2, _orders_1];
                 }
                 else {
                     return [2, false];
                 }
-                return [3, 10];
-            case 9: return [2, false];
-            case 10: return [2];
+                return [3, 11];
+            case 10: return [2, false];
+            case 11: return [2];
         }
     });
 }); };
@@ -372,6 +379,7 @@ var eventListener = function () { return __awaiter(void 0, void 0, void 0, funct
                         return [3, 2];
                     case 5:
                         innerState.eventListenerinProgress = false;
+                        console.log("changed_orders", changed_orders);
                         return [2];
                 }
             });
@@ -380,7 +388,7 @@ var eventListener = function () { return __awaiter(void 0, void 0, void 0, funct
     });
 }); };
 var main = function () {
-    console.log("version:1.8.7");
+    console.log("version:1.8.23");
     eventListener();
 };
 main();
@@ -402,19 +410,27 @@ var getProductByCode = function (code) { return __awaiter(void 0, void 0, void 0
     });
 }); };
 var getProductsByOrderId = function (orderId) { return __awaiter(void 0, void 0, void 0, function () {
-    var tranzt, products, i, item, product, getProductCodeFromTranzt, getProductPriceFromTranzt, productCode, product, productPrice;
+    var tranzt, products, i, item, product;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4, (0, tools_1.DbRequest)("SELECT * FROM TRANZT WHERE DOCUMENTID = ".concat(orderId))];
             case 1:
                 tranzt = _a.sent();
                 products = [];
+                if (!debug) return [3, 3];
+                return [4, (0, tools_1.saveToFile)("debug/getProductsByOrderId_tranzt", tranzt)];
+            case 2:
+                _a.sent();
+                _a.label = 3;
+            case 3:
                 for (i = 0; i < tranzt.length; i++) {
                     item = tranzt[i];
                     if (item.WARECODE > 0 &&
                         item.SUMM &&
                         item.QUANTITY &&
-                        item.TRANZTYPE !== 17) {
+                        item.TRANZTYPE !== 17 &&
+                        item.TRANZTYPE !== 87 &&
+                        item.TRANZTYPE !== 37) {
                         product = {
                             priceBase: item.SUMM,
                             price: item.SUMMWD,
@@ -424,27 +440,12 @@ var getProductsByOrderId = function (orderId) { return __awaiter(void 0, void 0,
                         products.push(product);
                     }
                 }
-                return [2, products];
-            case 2:
-                product = _a.sent();
-                if (!product) return [3, 4];
-                return [4, getProductPriceFromTranzt(tranzt)];
-            case 3:
-                productPrice = _a.sent();
-                product.price = 0;
-                if (productPrice) {
-                    product.price = productPrice;
-                }
-                (0, tools_1.saveToFile)("product", product);
-                return [2, [product]];
+                if (!debug) return [3, 5];
+                return [4, (0, tools_1.saveToFile)("debug/getProductsByOrderId_products", products)];
             case 4:
-                console.log("error - product not found");
+                _a.sent();
                 _a.label = 5;
-            case 5: return [3, 7];
-            case 6:
-                console.log("error - productCode not found");
-                _a.label = 7;
-            case 7: return [2];
+            case 5: return [2, products];
         }
     });
 }); };

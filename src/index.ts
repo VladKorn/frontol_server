@@ -1,4 +1,3 @@
-import { version } from "os";
 import {
 	saveToFile,
 	readFile,
@@ -17,16 +16,20 @@ global.fetch = require("node-fetch");
 // 		console.log("res", res);
 // 	});
 
+const debug = false;
+
 export interface Product {
 	price: number;
 	code: number;
 	quantity: number;
+	priceBase: number;
 }
 export interface Order {
 	STATE: number | "cancelled";
 	ID: number;
 	CHEQUENUMBER: number;
 	SUMM: number;
+	SUMMWD: number;
 	products: any[];
 	isCardPayment: boolean;
 	lastOrderUpdate: string;
@@ -44,31 +47,47 @@ const isOrderCancel = (_products: Product[]) => {
 	return _products.every((x) => x.price < 0);
 };
 export const clearRemovedProducts = (_products: Product[]) => {
-	const removedProds = _products.filter((x) => x.price < 0);
-	let removerdProductsCount = removedProds.length;
+	// const removedProds = _products.filter((x) => x.price < 0);
+	// let removerdProductsCount = removedProds.length;
 	// console.log("order.products", order.products);
-	// console.log("removedProds", removedProds);
+	// console.log("clearRemovedProducts removedProds", removedProds);
+	// if (debug) saveToFile(`debug/removedProds`, removedProds);
+	if (debug) saveToFile(`debug/clearRemovedProducts__products`, _products);
 
 	// console.log("removedProds", -removedProds[0].price);
-	const prods = _products.filter((prod) => {
-		if (prod.price < 0) return false;
-		let isRemovedProd = false;
-		removedProds.forEach((x) => {
-			if (
-				prod.price === -x.price &&
-				prod.code === x.code &&
-				prod.quantity === -x.quantity
-			)
-				if (removerdProductsCount > 0) {
-					isRemovedProd = true;
-					removerdProductsCount = removerdProductsCount - 1;
-				}
-		});
-		if (isRemovedProd) return false;
-
-		return true;
+	const productsByCode: { [key: number]: Product[] } = {};
+	_products.forEach((prod) => {
+		if (!productsByCode[prod.code]) productsByCode[prod.code] = [];
+		productsByCode[prod.code].push(prod);
 	});
-	return prods;
+
+	const products: Product[] = [];
+
+	Object.keys(productsByCode).forEach((key) => {
+		const prods = productsByCode[parseInt(key)];
+
+		const product = {
+			code: prods[0].code,
+			price: prods.reduce(
+				(accumulator, prod) => accumulator + prod.price,
+				0
+			),
+			priceBase: prods.reduce(
+				(accumulator, prod) => accumulator + prod.priceBase,
+				0
+			),
+			quantity: prods.reduce(
+				(accumulator, prod) => accumulator + prod.quantity,
+				0
+			),
+		};
+		if (product.price > 0) {
+			products.push(product);
+		}
+	});
+	if (debug) saveToFile(`debug/clearRemovedProducts_products`, products);
+
+	return products;
 };
 
 const prepareOrderData = async (_orders: Orders) => {
@@ -86,6 +105,7 @@ const prepareOrderData = async (_orders: Orders) => {
 				STATE: "cancelled",
 				ID: order.ID,
 				SUMM: order.SUMM,
+				SUMMWD: order.SUMMWD,
 				products: order.products,
 				isCardPayment: order.isCardPayment,
 				CHEQUENUMBER: order.CHEQUENUMBER,
@@ -124,6 +144,7 @@ const prepareOrderData = async (_orders: Orders) => {
 			STATE: _order.STATE,
 			ID: _order.ID,
 			SUMM: _order.SUMM,
+			SUMMWD: _order.SUMMWD,
 			products: products,
 			isCardPayment: _order.isCardPayment,
 			CHEQUENUMBER: _order.CHEQUENUMBER,
@@ -165,10 +186,11 @@ export const getOrdersFromDate = async (date: string) => {
 // getOrdersFromDate(`2020-11-01T22:00:00.000Z`);
 
 const sendToSite = async (_data: Orders) => {
-	saveToFile(`debug/data`, _data);
+	if (debug) saveToFile(`debug/data`, _data);
 	const data = await prepareOrderData(_data);
-	saveToFile(`debug/newData`, data);
+	// if (debug) saveToFile(`debug/newData`, data);
 	console.log("sendToSite", data.length);
+	// console.log("sendToSite test", data);
 	const config: any = await readFile("config");
 
 	console.log(
@@ -259,9 +281,9 @@ const checkOrdersUpdates = async () => {
 			console.log("eventListener order", orders[i].CHEQUENUMBER);
 			orders[i].products = await getProductsByOrderId(orders[i].ID);
 			orders[i].isCardPayment = await isCardPayment(orders[i].ID);
-			if (orders[i].CHEQUENUMBER == 7528) {
-				console.log("CHEQUENUMBER == 7528", orders[i]);
-			}
+			// if (orders[i].CHEQUENUMBER == 7528) {
+			// 	console.log("CHEQUENUMBER == 7528", orders[i]);
+			// }
 		}
 		const _orders: Orders = [];
 		orders.forEach((_order) => {
@@ -269,7 +291,7 @@ const checkOrdersUpdates = async () => {
 				_orders.push(_order);
 			}
 		});
-		// await saveToFile("debug/orders", orders);
+		await saveToFile("debug/orders", orders);
 		if (_orders.length > 0) {
 			return _orders;
 		} else {
@@ -309,11 +331,11 @@ const eventListener = async () => {
 			// console.log(`sendToSite res.statusText`, res.statusText);
 		}
 		innerState.eventListenerinProgress = false;
-		// console.log(changed_orders);
+		console.log("changed_orders", changed_orders);
 	}, 5000);
 };
 const main = () => {
-	console.log(`version:1.8.7`);
+	console.log(`version:1.8.23`);
 	eventListener();
 };
 main();
@@ -334,6 +356,7 @@ const getProductsByOrderId = async (orderId: number) => {
 	let products: any = [];
 	//@ts-ignore
 	// console.log("tranzt.length" , tranzt.length);
+	if (debug) await saveToFile(`debug/getProductsByOrderId_tranzt`, tranzt);
 
 	//@ts-ignore
 	for (let i = 0; i < tranzt.length; i++) {
@@ -344,7 +367,9 @@ const getProductsByOrderId = async (orderId: number) => {
 			item.WARECODE > 0 &&
 			item.SUMM &&
 			item.QUANTITY &&
-			item.TRANZTYPE !== 17
+			item.TRANZTYPE !== 17 &&
+			item.TRANZTYPE !== 87 &&
+			item.TRANZTYPE !== 37
 		) {
 			// let product = await getProductByCode(item.WARECODE);
 			let product = {
@@ -352,49 +377,52 @@ const getProductsByOrderId = async (orderId: number) => {
 				price: item.SUMMWD,
 				code: item.WARECODE,
 				quantity: item.QUANTITY,
+				// test: item,
 			};
 			products.push(product);
 		}
 	}
+	if (debug)
+		await saveToFile(`debug/getProductsByOrderId_products`, products);
 
 	return products;
 
-	const getProductCodeFromTranzt = (tranzt: any) => {
-		let code;
-		tranzt.forEach((element: any) => {
-			if (element.WARECODE > 0) {
-				code = element.WARECODE;
-			}
-		});
-		return code;
-	};
-	const getProductPriceFromTranzt = (tranzt: any) => {
-		let price;
-		tranzt.forEach((element: any) => {
-			if (element.WARECODE > 0 && element.SUMM) {
-				price = element.SUMM;
-			}
-		});
-		return price;
-	};
-	const productCode = getProductCodeFromTranzt(tranzt);
-	if (productCode) {
-		console.log("productCode", productCode);
-		const product = await getProductByCode(productCode);
-		if (product) {
-			const productPrice = await getProductPriceFromTranzt(tranzt);
-			product.price = 0;
-			if (productPrice) {
-				product.price = productPrice;
-			}
-			saveToFile("product", product);
-			return [product];
-		} else {
-			console.log("error - product not found");
-		}
-	} else {
-		console.log("error - productCode not found");
-	}
+	// const getProductCodeFromTranzt = (tranzt: any) => {
+	// 	let code;
+	// 	tranzt.forEach((element: any) => {
+	// 		if (element.WARECODE > 0) {
+	// 			code = element.WARECODE;
+	// 		}
+	// 	});
+	// 	return code;
+	// };
+	// const getProductPriceFromTranzt = (tranzt: any) => {
+	// 	let price;
+	// 	tranzt.forEach((element: any) => {
+	// 		if (element.WARECODE > 0 && element.SUMM) {
+	// 			price = element.SUMM;
+	// 		}
+	// 	});
+	// 	return price;
+	// };
+	// const productCode = getProductCodeFromTranzt(tranzt);
+	// if (productCode) {
+	// 	console.log("productCode", productCode);
+	// 	const product = await getProductByCode(productCode);
+	// 	if (product) {
+	// 		const productPrice = await getProductPriceFromTranzt(tranzt);
+	// 		product.price = 0;
+	// 		if (productPrice) {
+	// 			product.price = productPrice;
+	// 		}
+	// 		saveToFile("product", product);
+	// 		return [product];
+	// 	} else {
+	// 		console.log("error - product not found");
+	// 	}
+	// } else {
+	// 	console.log("error - productCode not found");
+	// }
 };
 
 // saveAllCols();
