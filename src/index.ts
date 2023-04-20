@@ -198,7 +198,7 @@ const sendToSite = async (_data: Orders) => {
 		data.filter((x) => x.STATE === "cancelled")
 	);
 
-	return fetch(`https://admin.yatakem.ru/frontol/order.php`, {
+	return fetch(`https://admin.magday.ru/frontol/order.php`, {
 		method: "post",
 		body: JSON.stringify({ orders: data, userId: config.userId }),
 	});
